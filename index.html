@@ -18,37 +18,48 @@
 
   <body>
     <a-scene background="color: #ECECEC">
-      <!-- === ASET === -->
+      <!-- === ASSET === -->
       <a-assets>
+        <!-- ROOM ASSET -->
         <a-asset-item id="roomModel" src="assets/computer_lab.glb"></a-asset-item>
+        <!-- TOOLS ASSET -->
         <a-asset-item id="screwdriver" src="assets/screwdriver.glb"></a-asset-item>
         <a-asset-item id="wooden_box" src="assets/wooden_box.glb"></a-asset-item>
-        <a-asset-item id="toolbox" src="assets/toolbox_lowpoly.glb"></a-asset-item>
-        <a-asset-item id="screw" src="assets/simple_screw.glb"></a-asset-item>
+        <a-asset-item id="toolbox_lowpoly" src="assets/toolbox_lowpoly.glb"></a-asset-item>
+        <a-asset-item id="simple_screw" src="assets/simple_screw.glb"></a-asset-item>
       </a-assets>
 
       <!-- === BACKGROUND (RUANGAN) === -->
       <a-entity 
-        id="background-room" 
+        id="background-room"
         gltf-model="#roomModel" 
         position="0 0 0" 
         scale="1 1 1" 
         rotation="0 0 0"
-        shadow="receive: true"
+        shadow="receive: false"
         class="environment"
         visible="true">
       </a-entity>
-
+      
       <!-- === PENCAYAHAN === -->
-      <a-entity light="type: ambient; intensity: 0.8; color: #fff"></a-entity>
-      <a-entity light="type: directional; intensity: 1; castShadow: true" position="3 5 2"></a-entity>
+      <!-- <a-entity light="type: ambient; intensity: 0.8; color: #fff"></a-entity>
+      <a-entity light="type: directional; intensity: 1; castShadow: true" position="3 5 2"></a-entity> -->
 
       <!-- === LANTAI TAMBAHAN (optional untuk bayangan) === -->
-      <a-plane rotation="-90 0 0" width="20" height="20" color="#666" shadow="receive: true"></a-plane>
+      <a-plane rotation="-90 0 0" position="0 0 -7" width="20" height="20" color="#666" shadow="receive: true"></a-plane>
 
       <!-- === KAMERA & KONTROL === -->
-      <a-entity id="cameraRig" position="0 1.6 3">
-        <a-entity camera look-controls wasd-controls></a-entity>
+      <a-entity
+        id="cameraRig"
+        position="0 2 3"
+        movement-controls="speed: 0.15; constrainToNavMesh: false"
+      >
+        <a-entity
+          camera
+          look-controls="pointerLockEnabled: false; reverseMouseDrag: false"
+          wasd-controls="acceleration: 80; fly: false"
+          movement-controls="speed: 0.8"
+        ></a-entity>
       </a-entity>
 
       <!-- Controller VR & desktop akan dibuat oleh setup-controllers.js -->
