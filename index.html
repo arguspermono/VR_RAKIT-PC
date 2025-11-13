@@ -2,174 +2,174 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Babylon VR Grab & Drop (Final Stable)</title>
+  <title>Babylon VR Grab + Snap (Regrab Fixed)</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <style>
-    html, body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #000;
-    }
-    canvas { width: 100%; height: 100%; touch-action: none; }
+    html, body {width:100%;height:100%;margin:0;overflow:hidden;background:#000;}
+    canvas {width:100%;height:100%;touch-action:none;}
   </style>
 </head>
 <body>
   <canvas id="renderCanvas"></canvas>
 
   <script>
-    const canvas = document.getElementById("renderCanvas");
-    const engine = new BABYLON.Engine(canvas, true);
+  const canvas = document.getElementById("renderCanvas");
+  const engine = new BABYLON.Engine(canvas, true);
 
-    const createScene = async () => {
-      const scene = new BABYLON.Scene(engine);
-      scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
+  const createScene = async () => {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
 
-      // Kamera dan pencahayaan
-      const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, -3), scene);
-      camera.attachControl(canvas, true);
-      new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    // Kamera & cahaya
+    const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, -3), scene);
+    camera.attachControl(canvas, true);
+    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-      // Lantai
-      const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
-      const gmat = new BABYLON.StandardMaterial("gmat", scene);
-      gmat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
-      ground.material = gmat;
+    // Lantai
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10}, scene);
+    const gmat = new BABYLON.StandardMaterial("gmat", scene);
+    gmat.diffuseColor = new BABYLON.Color3(0.7,0.7,0.7);
+    ground.material = gmat;
 
-      // Background ruangan (opsional)
-      BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
-        .then(() => console.log("Background loaded"))
-        .catch(() => console.warn("Background not found, skipped."));
+    // Background
+    BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
+      .then(()=>console.log("Background loaded"))
+      .catch(()=>console.warn("Background not found, skipped."));
 
-      // Kotak utama
-      const box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-      box.position = new BABYLON.Vector3(0, 1, -1);
-      const boxMat = new BABYLON.StandardMaterial("bmat", scene);
-      boxMat.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-      box.material = boxMat;
+    // Kotak biru
+    const box = BABYLON.MeshBuilder.CreateBox("box", {size:0.3}, scene);
+    box.position = new BABYLON.Vector3(0,1,-1);
+    box.isPickable = true;
+    const boxMat = new BABYLON.StandardMaterial("bmat", scene);
+    boxMat.diffuseColor = new BABYLON.Color3(0.2,0.5,1);
+    box.material = boxMat;
 
-      // Target snap
-      const snapTarget = BABYLON.MeshBuilder.CreateBox("snap", { size: 0.35 }, scene);
-      snapTarget.position = new BABYLON.Vector3(0.8, 1, -1);
-      const snapMat = new BABYLON.StandardMaterial("smat", scene);
-      snapMat.diffuseColor = new BABYLON.Color3(1, 0.5, 0.1);
-      snapMat.alpha = 0.8;
-      snapTarget.material = snapMat;
+    // Snap target (transparan)
+    const snapTarget = BABYLON.MeshBuilder.CreateBox("snap", {size:0.35}, scene);
+    snapTarget.position = new BABYLON.Vector3(0.8,1,-1);
+    snapTarget.isPickable = false; // tidak menghalangi klik
+    const snapMat = new BABYLON.StandardMaterial("smat", scene);
+    snapMat.diffuseColor = new BABYLON.Color3(1,0.5,0.1);
+    snapMat.alpha = 0.1;
+    snapTarget.material = snapMat;
 
-      // ======= 🖱️ DRAG DENGAN MOUSE (seperti demo resmi) =======
-      const drag = new BABYLON.PointerDragBehavior({
-        dragPlaneNormal: new BABYLON.Vector3(0, 1, 0)
-      });
-      drag.moveAttached = true;
+    const SNAP_DISTANCE = 0.25;
+    let snapped = false;
 
-      drag.onDragStartObservable.add(() => {
-        box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-        snapTarget.material.diffuseColor = new BABYLON.Color3(1, 0.5, 0);
-      });
+    // ======== 🖱 Mouse Drag ========
+    const drag = new BABYLON.PointerDragBehavior({dragPlaneNormal:new BABYLON.Vector3(0,1,0)});
+    drag.moveAttached = true;
 
-      drag.onDragEndObservable.add(() => {
-        box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-        snapTarget.material.diffuseColor = new BABYLON.Color3(1, 0.5, 0.1);
-        // Snap otomatis
-        if (BABYLON.Vector3.Distance(box.position, snapTarget.position) < 0.25) {
-          box.position.copyFrom(snapTarget.position);
-        }
-      });
-
-      box.addBehavior(drag);
-
-      // Hover highlight
-      scene.onPointerObservable.add((pi) => {
-        const pick = scene.pick(scene.pointerX, scene.pointerY);
-        if (pick.hit && pick.pickedMesh === box && !drag.dragging) {
-          box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-        } else if (!drag.dragging) {
-          box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-        }
-      }, BABYLON.PointerEventTypes.POINTERMOVE);
-
-      // ======= 🕶️ VR GRAB SYSTEM =======
-      const xr = await scene.createDefaultXRExperienceAsync({ floorMeshes: [ground] });
-
-      // ✅ FIX skala XR rig agar tidak mengecil
-      const rigParent = xr.baseExperience.camera.parent;
-      if (rigParent) {
-        rigParent.scaling = new BABYLON.Vector3(10, 10, 10);
-      } else {
-        xr.baseExperience.onStateChangedObservable.add((state) => {
-          if (state === BABYLON.WebXRState.IN_XR) {
-            const rig = xr.baseExperience.camera.parent;
-            if (rig) rig.scaling = new BABYLON.Vector3(10, 10, 10);
-          }
-        });
-      }
-
-      // Interaksi controller
-      xr.input.onControllerAddedObservable.add((controller) => {
-        const grip = controller.grip || controller.pointer;
-        let isGrabbing = false;
-        let offset = new BABYLON.Vector3();
-
-        // Laser pointer
-        const laser = BABYLON.MeshBuilder.CreateCylinder("laser", { height: 2, diameter: 0.01 }, scene);
-        laser.rotation.x = Math.PI / 2;
-        const lmat = new BABYLON.StandardMaterial("lm", scene);
-        lmat.emissiveColor = new BABYLON.Color3(1, 0, 0);
-        laser.material = lmat;
-        laser.isPickable = false;
-
-        scene.onBeforeRenderObservable.add(() => {
-          if (!controller.pointer) return;
-          laser.position.copyFrom(controller.pointer.position);
-          laser.rotationQuaternion = controller.pointer.rotationQuaternion;
-
-          const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 2);
-          const pick = scene.pickWithRay(ray);
-
-          if (!isGrabbing) {
-            if (pick.hit && pick.pickedMesh === box) {
-              box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-            } else {
-              box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-            }
-          } else {
-            box.position.copyFrom(grip.getAbsolutePosition().add(offset));
-          }
-        });
-
-        controller.onMotionControllerInitObservable.add((mc) => {
-          const trigger = mc.getComponent("xr-standard-trigger");
-          trigger.onButtonStateChangedObservable.add((state) => {
-            if (state.pressed && !isGrabbing) {
-              const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 1.5);
-              const pick = scene.pickWithRay(ray);
-              if (pick.hit && pick.pickedMesh === box) {
-                isGrabbing = true;
-                offset = box.position.subtract(grip.getAbsolutePosition());
-                box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-                snapTarget.material.diffuseColor = new BABYLON.Color3(1, 0.5, 0);
-              }
-            } else if (!state.pressed && isGrabbing) {
-              isGrabbing = false;
-              box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-              snapTarget.material.diffuseColor = new BABYLON.Color3(1, 0.5, 0.1);
-              if (BABYLON.Vector3.Distance(box.position, snapTarget.position) < 0.25) {
-                box.position.copyFrom(snapTarget.position);
-              }
-            }
-          });
-        });
-      });
-
-      return scene;
-    };
-
-    createScene().then((scene) => {
-      engine.runRenderLoop(() => scene.render());
+    drag.onDragStartObservable.add(() => {
+      snapped = false; // izinkan ambil ulang
+      box.material.diffuseColor = new BABYLON.Color3(0,1,0);
+      snapMat.alpha = 1; // tampilkan area snap
     });
-    window.addEventListener("resize", () => engine.resize());
+
+    drag.onDragEndObservable.add(() => {
+      const dist = BABYLON.Vector3.Distance(box.position, snapTarget.position);
+      if (dist < SNAP_DISTANCE) {
+        box.position.copyFrom(snapTarget.position);
+        box.position.y += 0.001; // offset kecil agar bisa dipick lagi
+        snapped = true;
+        snapMat.alpha = 0.1;
+      } else {
+        snapMat.alpha = 0.1;
+      }
+      box.material.diffuseColor = new BABYLON.Color3(0.2,0.5,1);
+    });
+
+    box.addBehavior(drag);
+
+    // Hover efek
+    scene.onPointerObservable.add((pi)=>{
+      const pick = scene.pick(scene.pointerX, scene.pointerY);
+      if (pick.hit && pick.pickedMesh===box && !drag.dragging)
+        box.material.diffuseColor = new BABYLON.Color3(0,1,0);
+      else if (!drag.dragging)
+        box.material.diffuseColor = new BABYLON.Color3(0.2,0.5,1);
+    }, BABYLON.PointerEventTypes.POINTERMOVE);
+
+    // ======== 🕶 VR Grab ========
+    const xr = await scene.createDefaultXRExperienceAsync({floorMeshes:[ground]});
+
+    // fix skala rig agar tidak mengecil
+    const rigParent = xr.baseExperience.camera.parent;
+    if (rigParent) rigParent.scaling = new BABYLON.Vector3(10,10,10);
+    else xr.baseExperience.onStateChangedObservable.add((s)=>{
+      if(s===BABYLON.WebXRState.IN_XR){
+        const rig=xr.baseExperience.camera.parent;
+        if(rig) rig.scaling = new BABYLON.Vector3(10,10,10);
+      }
+    });
+
+    xr.input.onControllerAddedObservable.add((controller)=>{
+      const grip = controller.grip || controller.pointer;
+      let isGrabbing=false;
+      let offset=new BABYLON.Vector3();
+
+      // Laser
+      const laser = BABYLON.MeshBuilder.CreateCylinder("laser",{height:2,diameter:0.01},scene);
+      laser.rotation.x=Math.PI/2;
+      const lmat=new BABYLON.StandardMaterial("lm",scene);
+      lmat.emissiveColor=new BABYLON.Color3(1,0,0);
+      laser.material=lmat;
+      laser.isPickable=false;
+
+      scene.onBeforeRenderObservable.add(()=>{
+        if(!controller.pointer)return;
+        laser.position.copyFrom(controller.pointer.position);
+        laser.rotationQuaternion=controller.pointer.rotationQuaternion;
+
+        const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 2);
+        const pick = scene.pickWithRay(ray);
+
+        if(!isGrabbing){
+          if(pick.hit && pick.pickedMesh===box)
+            box.material.diffuseColor=new BABYLON.Color3(0,1,0);
+          else
+            box.material.diffuseColor=new BABYLON.Color3(0.2,0.5,1);
+        } else {
+          box.position.copyFrom(grip.getAbsolutePosition().add(offset));
+        }
+      });
+
+      controller.onMotionControllerInitObservable.add((mc)=>{
+        const trigger = mc.getComponent("xr-standard-trigger");
+        trigger.onButtonStateChangedObservable.add((state)=>{
+          if(state.pressed && !isGrabbing){
+            const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 1.5);
+            const pick = scene.pickWithRay(ray);
+            if(pick.hit && pick.pickedMesh===box){
+              isGrabbing=true;
+              snapped=false;
+              offset = box.position.subtract(grip.getAbsolutePosition());
+              box.material.diffuseColor=new BABYLON.Color3(0,1,0);
+              snapMat.alpha=1;
+            }
+          } else if(!state.pressed && isGrabbing){
+            isGrabbing=false;
+            box.material.diffuseColor=new BABYLON.Color3(0.2,0.5,1);
+            const dist = BABYLON.Vector3.Distance(box.position,snapTarget.position);
+            if(dist < SNAP_DISTANCE){
+              box.position.copyFrom(snapTarget.position);
+              box.position.y += 0.001; // offset supaya bisa diambil ulang
+              snapped=true;
+              snapMat.alpha=0.1;
+            } else {
+              snapMat.alpha=0.1;
+            }
+          }
+        });
+      });
+    });
+
+    return scene;
+  };
+
+  createScene().then(scene=>engine.runRenderLoop(()=>scene.render()));
+  window.addEventListener("resize",()=>engine.resize());
   </script>
 </body>
 </html>
