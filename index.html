@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Babylon VR Grab + Dual Snap Logic (Final)</title>
+  <title>Babylon VR - Processor & Motherboard (Scaled)</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <style>
@@ -19,169 +19,82 @@
   const createScene = async () => {
     const scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
-
     const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, -3), scene);
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // ========== LANTAI + BACKGROUND ==========
-    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10}, scene);
+    // Lantai
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
     const gmat = new BABYLON.StandardMaterial("gmat", scene);
     gmat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
     ground.material = gmat;
 
+    // Background
     BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
-      .then(()=>console.log("Background loaded"))
-      .catch(()=>console.warn("Background not found, skipped."));
+      .then(() => console.log("Background loaded"))
+      .catch(() => console.warn("Background not found, skipped."));
 
-    // ========== OBJEK KOTAK (GRABBABLE) ==========
-    const box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-    box.position = new BABYLON.Vector3(0, 1, -1);
-    const boxMat = new BABYLON.StandardMaterial("bmat", scene);
-    boxMat.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-    box.material = boxMat;
-    box.isPickable = true;
+    // ==== LOAD MOBO ====
+    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "mobo.glb", scene);
+    const mobo = moboResult.meshes[0];
+    mobo.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
+    mobo.position = new BABYLON.Vector3(0, 1, -1);
 
-    // ========== SNAP TARGETS ==========
-    const snap1 = BABYLON.MeshBuilder.CreateBox("snap1", { size: 0.35 }, scene);
-    snap1.position = new BABYLON.Vector3(0.8, 1, -1);
-    const mat1 = new BABYLON.StandardMaterial("mat1", scene);
-    mat1.diffuseColor = new BABYLON.Color3(1, 0.6, 0.1); // oranye
-    mat1.alpha = 0.1;
-    snap1.material = mat1;
-    snap1.isPickable = false;
+    // ==== LOAD PROCESSOR ====
+    const procResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "processor.glb", scene);
+    const processor = procResult.meshes[0];
+    processor.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
+    processor.position = new BABYLON.Vector3(0.5, 1.2, -1);
+    processor.isPickable = true;
 
-    const snap2 = BABYLON.MeshBuilder.CreateBox("snap2", { size: 0.35 }, scene);
-    snap2.position = new BABYLON.Vector3(-0.8, 1, -1);
-    const mat2 = new BABYLON.StandardMaterial("mat2", scene);
-    mat2.diffuseColor = new BABYLON.Color3(1, 0, 0); // merah (invalid)
-    mat2.alpha = 0.1;
-    snap2.material = mat2;
-    snap2.isPickable = false;
-
-    const SNAP_DISTANCE = 0.25;
-    const validSnap = snap1;
-    const invalidSnap = snap2;
-    let currentSnap = null;
-
-    // ========== 🖱️ POINTER DRAG BEHAVIOR ==========
+    // ===== Pointer Drag Behavior =====
     const drag = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
-    box.addBehavior(drag);
+    processor.addBehavior(drag);
 
     drag.onDragStartObservable.add(() => {
-      box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-      mat1.alpha = 0.8;
-      mat2.alpha = 0.8;
+      processor.getChildMeshes().forEach(m => {
+        if (m.material) m.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
+      });
     });
 
     drag.onDragObservable.add(() => {
-      const distValid = BABYLON.Vector3.Distance(box.position, validSnap.position);
-      const distInvalid = BABYLON.Vector3.Distance(box.position, invalidSnap.position);
-
-      if (distValid < SNAP_DISTANCE) {
-        mat1.diffuseColor = new BABYLON.Color3(1, 0.6, 0.1);
-        mat2.diffuseColor = new BABYLON.Color3(1, 0, 0);
-        currentSnap = validSnap;
-      } else if (distInvalid < SNAP_DISTANCE) {
-        mat1.diffuseColor = new BABYLON.Color3(1, 0.6, 0.1);
-        mat2.diffuseColor = new BABYLON.Color3(1, 0, 0);
-        currentSnap = invalidSnap;
+      // Snap check
+      const dist = BABYLON.Vector3.Distance(processor.position, mobo.position);
+      if (dist < 0.3) {
+        mobo.getChildMeshes().forEach(m => {
+          if (m.material) m.material.emissiveColor = new BABYLON.Color3(1, 0.6, 0.1);
+        });
       } else {
-        currentSnap = null;
+        mobo.getChildMeshes().forEach(m => {
+          if (m.material) m.material.emissiveColor = BABYLON.Color3.Black();
+        });
       }
     });
 
     drag.onDragEndObservable.add(() => {
-      if (currentSnap === validSnap) {
-        box.position.copyFrom(validSnap.position);
-        box.position.y += 0.001;
+      const dist = BABYLON.Vector3.Distance(processor.position, mobo.position);
+      if (dist < 0.3) {
+        processor.position.copyFrom(mobo.position);
+        processor.position.y += 0.05;
       }
-      box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-      mat1.alpha = 0.1;
-      mat2.alpha = 0.1;
-      currentSnap = null;
+      processor.getChildMeshes().forEach(m => {
+        if (m.material) m.material.emissiveColor = BABYLON.Color3.Black();
+      });
     });
 
     // Hover efek
     scene.onPointerObservable.add((pi) => {
       const pick = scene.pick(scene.pointerX, scene.pointerY);
-      if (pick.hit && pick.pickedMesh === box && !drag.dragging)
-        box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
+      if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh))
+        processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = new BABYLON.Color3(0, 1, 0)));
       else if (!drag.dragging)
-        box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+        processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = BABYLON.Color3.Black()));
     }, BABYLON.PointerEventTypes.POINTERMOVE);
 
-    // ========== 🕶️ VR GRAB LOGIC ==========
+    // VR
     const xr = await scene.createDefaultXRExperienceAsync({ floorMeshes: [ground] });
-
-    xr.input.onControllerAddedObservable.add((controller) => {
-      const grip = controller.grip || controller.pointer;
-      let isGrabbing = false;
-      let offset = new BABYLON.Vector3();
-
-      scene.onBeforeRenderObservable.add(() => {
-        if (!controller.pointer) return;
-
-        const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 2);
-        const pick = scene.pickWithRay(ray);
-
-        if (!isGrabbing) {
-          if (pick.hit && pick.pickedMesh === box)
-            box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-          else
-            box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-        } else {
-          // Gerakan halus & cepat mengikuti controller
-          const targetPos = grip.getAbsolutePosition().add(offset);
-          box.position.copyFrom(targetPos);
-
-          const distValid = BABYLON.Vector3.Distance(box.position, validSnap.position);
-          const distInvalid = BABYLON.Vector3.Distance(box.position, invalidSnap.position);
-
-          if (distValid < SNAP_DISTANCE) {
-            mat1.alpha = 0.8;
-            mat2.alpha = 0.1;
-            currentSnap = validSnap;
-          } else if (distInvalid < SNAP_DISTANCE) {
-            mat1.alpha = 0.1;
-            mat2.alpha = 0.8;
-            currentSnap = invalidSnap;
-          } else {
-            mat1.alpha = 0.1;
-            mat2.alpha = 0.1;
-            currentSnap = null;
-          }
-        }
-      });
-
-      controller.onMotionControllerInitObservable.add((mc) => {
-        const trigger = mc.getComponent("xr-standard-trigger");
-        trigger.onButtonStateChangedObservable.add((state) => {
-          if (state.pressed && !isGrabbing) {
-            const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 1.5);
-            const pick = scene.pickWithRay(ray);
-            if (pick.hit && pick.pickedMesh === box) {
-              isGrabbing = true;
-              offset = box.position.subtract(grip.getAbsolutePosition());
-              mat1.alpha = 0.8;
-              mat2.alpha = 0.8;
-              box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-            }
-          } else if (!state.pressed && isGrabbing) {
-            isGrabbing = false;
-            mat1.alpha = 0.1;
-            mat2.alpha = 0.1;
-            box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
-
-            if (currentSnap === validSnap) {
-              box.position.copyFrom(validSnap.position);
-              box.position.y += 0.001; // agar tetap bisa diambil lagi
-            }
-            currentSnap = null;
-          }
-        });
-      });
-    });
+    const rig = xr.baseExperience.camera.parent;
+    if (rig) rig.scaling = new BABYLON.Vector3(10, 10, 10);
 
     return scene;
   };
