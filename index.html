@@ -2,16 +2,17 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Babylon VR - Processor & Motherboard (Scaled)</title>
+  <title>Babylon VR - Processor Snap ke Motherboard</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <style>
-    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#000; }
-    canvas { width:100%; height:100%; touch-action:none; }
+    html, body {width:100%; height:100%; margin:0; overflow:hidden; background:#000;}
+    canvas {width:100%; height:100%; touch-action:none;}
   </style>
 </head>
 <body>
   <canvas id="renderCanvas"></canvas>
+
   <script>
   const canvas = document.getElementById("renderCanvas");
   const engine = new BABYLON.Engine(canvas, true);
@@ -19,82 +20,104 @@
   const createScene = async () => {
     const scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
-    const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, -3), scene);
+
+    const camera = new BABYLON.UniversalCamera("cam", new BABYLON.Vector3(0, 1.6, -3), scene);
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // Lantai
-    const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
+    // ====== LANTAI ======
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10}, scene);
     const gmat = new BABYLON.StandardMaterial("gmat", scene);
-    gmat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    gmat.diffuseColor = new BABYLON.Color3(0.7,0.7,0.7);
     ground.material = gmat;
 
-    // Background
+    // ====== BACKGROUND ======
     BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
-      .then(() => console.log("Background loaded"))
-      .catch(() => console.warn("Background not found, skipped."));
+      .then(()=>console.log("Background loaded"))
+      .catch(()=>console.warn("Background not found, skipped."));
 
-    // ==== LOAD MOBO ====
-    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "mobo.glb", scene);
+    // ====== LOAD MOTHERBOARD ======
+    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "motherboard.glb", scene);
     const mobo = moboResult.meshes[0];
-    mobo.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
-    mobo.position = new BABYLON.Vector3(0, 1, -1);
+    mobo.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
+    mobo.position = new BABYLON.Vector3(0,1,-1);
+    const moboChildren = mobo.getChildMeshes();
 
-    // ==== LOAD PROCESSOR ====
+    // ====== LOAD PROCESSOR ======
     const procResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "processor.glb", scene);
     const processor = procResult.meshes[0];
-    processor.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
-    processor.position = new BABYLON.Vector3(0.5, 1.2, -1);
+    processor.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
+    processor.position = new BABYLON.Vector3(0.4,1.2,-1);
     processor.isPickable = true;
 
-    // ===== Pointer Drag Behavior =====
-    const drag = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
+    // ====== COLOR HELPERS ======
+    const setMoboColor = (col) => {
+      moboChildren.forEach(m => { if (m.material) m.material.emissiveColor = col; });
+    };
+    const setProcColor = (col) => {
+      processor.getChildMeshes().forEach(m => { if (m.material) m.material.emissiveColor = col; });
+    };
+
+    // ====== SNAP LOGIC ======
+    const SNAP_DISTANCE = 0.25;
+    const SNAP_POS = mobo.position.clone().add(new BABYLON.Vector3(0, 0.05, 0));
+    let isSnapped = false;
+
+    // ====== DRAG BEHAVIOR ======
+    const drag = new BABYLON.PointerDragBehavior({dragPlaneNormal: new BABYLON.Vector3(0,1,0)});
     processor.addBehavior(drag);
 
     drag.onDragStartObservable.add(() => {
-      processor.getChildMeshes().forEach(m => {
-        if (m.material) m.material.emissiveColor = new BABYLON.Color3(0, 1, 0);
-      });
+      setProcColor(new BABYLON.Color3(0.2, 0.6, 1)); // biru saat di-grab
+      setMoboColor(new BABYLON.Color3(1, 0.6, 0.1)); // mobo oranye
     });
 
     drag.onDragObservable.add(() => {
-      // Snap check
-      const dist = BABYLON.Vector3.Distance(processor.position, mobo.position);
-      if (dist < 0.3) {
-        mobo.getChildMeshes().forEach(m => {
-          if (m.material) m.material.emissiveColor = new BABYLON.Color3(1, 0.6, 0.1);
-        });
+      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
+      if (dist < SNAP_DISTANCE) {
+        setMoboColor(new BABYLON.Color3(1, 0.6, 0.1));
       } else {
-        mobo.getChildMeshes().forEach(m => {
-          if (m.material) m.material.emissiveColor = BABYLON.Color3.Black();
-        });
+        setMoboColor(new BABYLON.Color3(0, 0, 0));
       }
     });
 
     drag.onDragEndObservable.add(() => {
-      const dist = BABYLON.Vector3.Distance(processor.position, mobo.position);
-      if (dist < 0.3) {
-        processor.position.copyFrom(mobo.position);
-        processor.position.y += 0.05;
+      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
+      if (dist < SNAP_DISTANCE) {
+        processor.position.copyFrom(SNAP_POS);
+        isSnapped = true;
+      } else {
+        isSnapped = false;
       }
-      processor.getChildMeshes().forEach(m => {
-        if (m.material) m.material.emissiveColor = BABYLON.Color3.Black();
-      });
+      // setelah snap -> warna normal lagi
+      setProcColor(BABYLON.Color3.Black());
+      setMoboColor(BABYLON.Color3.Black());
     });
 
-    // Hover efek
+    // ====== HOVER EFFECT ======
     scene.onPointerObservable.add((pi) => {
+      if (isSnapped || drag.dragging) return;
       const pick = scene.pick(scene.pointerX, scene.pointerY);
-      if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh))
-        processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = new BABYLON.Color3(0, 1, 0)));
-      else if (!drag.dragging)
-        processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = BABYLON.Color3.Black()));
+      if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh)) {
+        setProcColor(new BABYLON.Color3(0.2, 0.5, 1)); // biru saat hover
+      } else {
+        setProcColor(BABYLON.Color3.Black()); // normal
+      }
     }, BABYLON.PointerEventTypes.POINTERMOVE);
 
-    // VR
-    const xr = await scene.createDefaultXRExperienceAsync({ floorMeshes: [ground] });
+    // ====== BISA AMBIL LAGI SETELAH SNAP ======
+    scene.onPointerDown = () => {
+      const pick = scene.pick(scene.pointerX, scene.pointerY);
+      if (isSnapped && pick.hit && processor.getChildMeshes().includes(pick.pickedMesh)) {
+        isSnapped = false;
+        processor.position.y += 0.05; // naik sedikit biar bisa digrab lagi
+      }
+    };
+
+    // ====== VR SUPPORT ======
+    const xr = await scene.createDefaultXRExperienceAsync({floorMeshes:[ground]});
     const rig = xr.baseExperience.camera.parent;
-    if (rig) rig.scaling = new BABYLON.Vector3(10, 10, 10);
+    if (rig) rig.scaling = new BABYLON.Vector3(10,10,10);
 
     return scene;
   };
