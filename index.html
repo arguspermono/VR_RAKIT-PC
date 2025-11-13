@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Babylon VR Grab System Modular</title>
+  <meta charset="UTF-8" />
+  <title>Babylon VR Grab & Drop (Mouse + VR)</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <style>
@@ -13,6 +13,151 @@
 <body>
   <canvas id="renderCanvas"></canvas>
 
-  <script type="module" src="./js/main.js"></script>
+  <script>
+  const canvas = document.getElementById("renderCanvas");
+  const engine = new BABYLON.Engine(canvas, true);
+
+  const createScene = async () => {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
+
+    const camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.6, -3), scene);
+    camera.attachControl(canvas, true);
+    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+    // Lantai
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
+    const gmat = new BABYLON.StandardMaterial("gmat", scene);
+    gmat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.7);
+    ground.material = gmat;
+
+    // Background
+    BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
+      .then(() => console.log("Background loaded"))
+      .catch(() => console.warn("Background not found, skipped."));
+
+    // Kotak
+    const box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+    box.position = new BABYLON.Vector3(0, 1, -1);
+    const boxMat = new BABYLON.StandardMaterial("bmat", scene);
+    boxMat.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+    box.material = boxMat;
+
+    // ========== 🖱 MOUSE GRAB (SUPER PRECISE) ==========
+let isMouseGrabbing = false;
+let grabDepth = 0; // jarak box dari kamera saat klik
+let grabOffset = new BABYLON.Vector3();
+
+scene.onPointerObservable.add((pointerInfo) => {
+  const pick = scene.pick(scene.pointerX, scene.pointerY);
+  const hoverHit = pick && pick.hit && pick.pickedMesh === box;
+
+  switch (pointerInfo.type) {
+    case BABYLON.PointerEventTypes.POINTERMOVE:
+      if (!isMouseGrabbing) {
+        // Highlight saat hover
+        box.material.diffuseColor = hoverHit
+          ? new BABYLON.Color3(0, 1, 0)
+          : new BABYLON.Color3(0.2, 0.5, 1);
+      } else {
+        // Konversi posisi pointer ke world space di jarak tetap dari kamera
+        const pickRay = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
+        const targetPoint = pickRay.origin.add(pickRay.direction.scale(grabDepth));
+
+        // Update posisi box berdasarkan offset klik awal
+        const newPos = targetPoint.add(grabOffset);
+        box.position.copyFrom(newPos);
+      }
+      break;
+
+    case BABYLON.PointerEventTypes.POINTERDOWN:
+      if (hoverHit) {
+        isMouseGrabbing = true;
+        box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
+
+        // Hitung jarak box dari kamera (depth)
+        const cameraToBox = box.position.subtract(camera.position);
+        grabDepth = BABYLON.Vector3.Dot(cameraToBox, camera.getForwardRay().direction);
+
+        // Hitung offset relatif klik terhadap pusat box
+        if (pick && pick.hit) grabOffset = box.position.subtract(pick.pickedPoint);
+      }
+      break;
+
+    case BABYLON.PointerEventTypes.POINTERUP:
+      if (isMouseGrabbing) {
+        isMouseGrabbing = false;
+        box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+      }
+      break;
+  }
+});
+
+
+
+    // ========== 🕹 VR GRAB ==========
+    const xr = await scene.createDefaultXRExperienceAsync({ floorMeshes: [ground] });
+
+    xr.input.onControllerAddedObservable.add((controller) => {
+      const grip = controller.grip || controller.pointer;
+      let isGrabbing = false;
+      let offset = new BABYLON.Vector3();
+
+      // Laser
+      const laser = BABYLON.MeshBuilder.CreateCylinder("laser", { height: 2, diameter: 0.01 }, scene);
+      laser.rotation.x = Math.PI / 2;
+      const laserMat = new BABYLON.StandardMaterial("lmat", scene);
+      laserMat.emissiveColor = new BABYLON.Color3(1, 0, 0);
+      laser.material = laserMat;
+      laser.isPickable = false;
+
+      scene.onBeforeRenderObservable.add(() => {
+        if (!controller.pointer) return;
+        laser.position.copyFrom(controller.pointer.position);
+        laser.rotationQuaternion = controller.pointer.rotationQuaternion;
+
+        const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 2);
+        const pick = scene.pickWithRay(ray);
+
+        if (!isGrabbing) {
+          if (pick.hit && pick.pickedMesh === box) {
+            box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
+          } else {
+            box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+          }
+        } else {
+          const gripPos = grip.getAbsolutePosition().add(offset);
+          box.position.copyFrom(gripPos);
+        }
+      });
+
+      controller.onMotionControllerInitObservable.add((mc) => {
+        const trigger = mc.getComponent("xr-standard-trigger");
+        trigger.onButtonStateChangedObservable.add((state) => {
+          if (state.pressed && !isGrabbing) {
+            const ray = new BABYLON.Ray(controller.pointer.position, controller.pointer.forward, 1.5);
+            const pick = scene.pickWithRay(ray);
+            if (pick.hit && pick.pickedMesh === box) {
+              isGrabbing = true;
+              offset = box.position.subtract(grip.getAbsolutePosition());
+              box.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
+            }
+          } else if (!state.pressed && isGrabbing) {
+            isGrabbing = false;
+            box.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 1);
+          }
+        });
+      });
+    });
+
+    return scene;
+  };
+
+  createScene().then((scene) => {
+    engine.runRenderLoop(() => scene.render());
+  });
+  window.addEventListener("resize", () => engine.resize());
+</script>
+
 </body>
 </html>
