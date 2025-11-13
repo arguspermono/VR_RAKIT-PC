@@ -1,60 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>VR PC Assembly - Computer Lab</title>
-    <link rel="stylesheet" href="css/style.css" />
+<head>
+  <meta charset="UTF-8" />
+  <title>Babylon VR - Processor Snap ke Motherboard</title>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <style>
+    html, body {width:100%; height:100%; margin:0; overflow:hidden; background:#000;}
+    canvas {width:100%; height:100%; touch-action:none;}
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
 
-    <!-- A-Frame dan plugin -->
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-super-hands/dist/aframe-super-hands.min.js"></script>
+  <script>
+  const canvas = document.getElementById("renderCanvas");
+  const engine = new BABYLON.Engine(canvas, true);
 
-    <!-- Script modular -->
-    <script src="./js/snap-system.js"></script>
-    <script src="./js/setup-controllers.js"></script>
-    <script src="./js/main.js" defer></script>
-  </head>
+  const createScene = async () => {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
 
-  <body>
-    <a-scene background="color: #ECECEC">
-      <!-- === ASET === -->
-      <a-assets>
-        <a-asset-item id="roomModel" src="assets/computer_lab.glb"></a-asset-item>
-        <a-asset-item id="screwdriver" src="assets/screwdriver.glb"></a-asset-item>
-        <a-asset-item id="wooden_box" src="assets/wooden_box.glb"></a-asset-item>
-        <a-asset-item id="toolbox" src="assets/toolbox_lowpoly.glb"></a-asset-item>
-        <a-asset-item id="screw" src="assets/simple_screw.glb"></a-asset-item>
-      </a-assets>
+    const camera = new BABYLON.UniversalCamera("cam", new BABYLON.Vector3(0, 1.6, -3), scene);
+    camera.attachControl(canvas, true);
+    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-      <!-- === BACKGROUND (RUANGAN) === -->
-      <a-entity 
-        id="background-room" 
-        gltf-model="#roomModel" 
-        position="0 0 0" 
-        scale="1 1 1" 
-        rotation="0 0 0"
-        shadow="receive: true"
-        class="environment"
-        visible="true">
-      </a-entity>
+    // ====== LANTAI ======
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10}, scene);
+    const gmat = new BABYLON.StandardMaterial("gmat", scene);
+    gmat.diffuseColor = new BABYLON.Color3(0.7,0.7,0.7);
+    ground.material = gmat;
 
-      <!-- === PENCAYAHAN === -->
-      <a-entity light="type: ambient; intensity: 0.8; color: #fff"></a-entity>
-      <a-entity light="type: directional; intensity: 1; castShadow: true" position="3 5 2"></a-entity>
+    // ====== BACKGROUND ======
+    BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
+      .then(()=>console.log("Background loaded"))
+      .catch(()=>console.warn("Background not found, skipped."));
 
-      <!-- === LANTAI TAMBAHAN (optional untuk bayangan) === -->
-      <a-plane rotation="-90 0 0" width="20" height="20" color="#666" shadow="receive: true"></a-plane>
+    // ====== LOAD MOTHERBOARD ======
+    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "motherboard.glb", scene);
+    const mobo = moboResult.meshes[0];
+    mobo.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
+    mobo.position = new BABYLON.Vector3(0,1,-1);
+    const moboChildren = mobo.getChildMeshes();
 
-      <!-- === KAMERA & KONTROL === -->
-      <a-entity id="cameraRig" position="0 1.6 3">
-        <a-entity camera look-controls wasd-controls></a-entity>
-      </a-entity>
+    // ====== LOAD PROCESSOR ======
+    const procResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "processor.glb", scene);
+    const processor = procResult.meshes[0];
+    processor.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
+    processor.position = new BABYLON.Vector3(0.4,1.2,-1);
+    processor.isPickable = true;
 
-      <!-- Controller VR & desktop akan dibuat oleh setup-controllers.js -->
-      
-      <!-- === OBJEK INTERAKTIF === -->
-      <a-entity id="scene-objects"></a-entity>
-    </a-scene>
-  </body>
+    // ====== COLOR HELPERS ======
+    const setMoboColor = (col) => {
+      moboChildren.forEach(m => { if (m.material) m.material.emissiveColor = col; });
+    };
+    const setProcColor = (col) => {
+      processor.getChildMeshes().forEach(m => { if (m.material) m.material.emissiveColor = col; });
+    };
+
+    // ====== SNAP LOGIC ======
+    const SNAP_DISTANCE = 0.25;
+    const SNAP_POS = mobo.position.clone().add(new BABYLON.Vector3(0, 0.05, 0));
+    let isSnapped = false;
+
+    // ====== DRAG BEHAVIOR ======
+    const drag = new BABYLON.PointerDragBehavior({dragPlaneNormal: new BABYLON.Vector3(0,1,0)});
+    processor.addBehavior(drag);
+
+    drag.onDragStartObservable.add(() => {
+      setProcColor(new BABYLON.Color3(0.2, 0.6, 1)); // biru saat di-grab
+      setMoboColor(new BABYLON.Color3(1, 0.6, 0.1)); // mobo oranye
+    });
+
+    drag.onDragObservable.add(() => {
+      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
+      if (dist < SNAP_DISTANCE) {
+        setMoboColor(new BABYLON.Color3(1, 0.6, 0.1));
+      } else {
+        setMoboColor(new BABYLON.Color3(0, 0, 0));
+      }
+    });
+
+    drag.onDragEndObservable.add(() => {
+      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
+      if (dist < SNAP_DISTANCE) {
+        processor.position.copyFrom(SNAP_POS);
+        isSnapped = true;
+      } else {
+        isSnapped = false;
+      }
+      // setelah snap -> warna normal lagi
+      setProcColor(BABYLON.Color3.Black());
+      setMoboColor(BABYLON.Color3.Black());
+    });
+
+    // ====== HOVER EFFECT ======
+    scene.onPointerObservable.add((pi) => {
+      if (isSnapped || drag.dragging) return;
+      const pick = scene.pick(scene.pointerX, scene.pointerY);
+      if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh)) {
+        setProcColor(new BABYLON.Color3(0.2, 0.5, 1)); // biru saat hover
+      } else {
+        setProcColor(BABYLON.Color3.Black()); // normal
+      }
+    }, BABYLON.PointerEventTypes.POINTERMOVE);
+
+    // ====== BISA AMBIL LAGI SETELAH SNAP ======
+    scene.onPointerDown = () => {
+      const pick = scene.pick(scene.pointerX, scene.pointerY);
+      if (isSnapped && pick.hit && processor.getChildMeshes().includes(pick.pickedMesh)) {
+        isSnapped = false;
+        processor.position.y += 0.05; // naik sedikit biar bisa digrab lagi
+      }
+    };
+
+    // ====== VR SUPPORT ======
+    const xr = await scene.createDefaultXRExperienceAsync({floorMeshes:[ground]});
+    const rig = xr.baseExperience.camera.parent;
+    if (rig) rig.scaling = new BABYLON.Vector3(10,10,10);
+
+    return scene;
+  };
+
+  createScene().then(scene => engine.runRenderLoop(() => scene.render()));
+  window.addEventListener("resize", () => engine.resize());
+  </script>
+</body>
 </html>
