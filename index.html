@@ -1,134 +1,32 @@
 <!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <title>Babylon VR - Processor Snap ke Socket CPU (Final)</title>
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-  <style>
-    html, body {width:100%; height:100%; margin:0; overflow:hidden; background:#000;}
-    canvas {width:100%; height:100%; touch-action:none;}
-  </style>
-</head>
-<body>
-  <canvas id="renderCanvas"></canvas>
-
-  <script>
-  const canvas = document.getElementById("renderCanvas");
-  const engine = new BABYLON.Engine(canvas, true);
-
-  const createScene = async () => {
-    const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color3(0.8, 0.9, 1);
-
-    const camera = new BABYLON.UniversalCamera("cam", new BABYLON.Vector3(0, 1.6, -3), scene);
-    camera.attachControl(canvas, true);
-    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-
-    // ====== LANTAI ======
-    const ground = BABYLON.MeshBuilder.CreateGround("ground", {width:10, height:10}, scene);
-    const gmat = new BABYLON.StandardMaterial("gmat", scene);
-    gmat.diffuseColor = new BABYLON.Color3(0.7,0.7,0.7);
-    ground.material = gmat;
-
-    // ====== BACKGROUND ======
-    BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "computer_lab.glb", scene)
-      .then(()=>console.log("Background loaded"))
-      .catch(()=>console.warn("Background not found, skipped."));
-
-    // ====== LOAD MOTHERBOARD ======
-    console.log("🔍 Memuat motherboard3.glb...");
-    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "motherboard3.glb", scene);
-    const mobo = moboResult.meshes[0];
-    mobo.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
-    mobo.position = new BABYLON.Vector3(0,1,-1);
-
-    const socketCPU = moboResult.meshes.find(m => m.name.toLowerCase() === "socket_cpu");
-if (!socketCPU) {
-  console.warn("⚠️ Mesh socket_cpu tidak ditemukan!");
-} else {
-  console.log("✅ Socket CPU ditemukan:", socketCPU.name);
-  if (socketCPU.material) {
-    socketCPU.material = socketCPU.material.clone("socketCPU_highlight");
-  }
-}
-
-    // ====== LOAD PROCESSOR ======
-    const procResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "processor.glb", scene);
-    const processor = procResult.meshes[0];
-    processor.scaling = new BABYLON.Vector3(0.2,0.2,0.2);
-    processor.position = new BABYLON.Vector3(0.5,1.2,-1);
-    processor.isPickable = true;
-
-    // ====== UTILITAS WARNA ======
-    const setSocketColor = (col) => { if (socketCPU?.material) socketCPU.material.emissiveColor = col; };
-    const setProcColor = (col) => { processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = col)); };
-
-    const SNAP_DISTANCE = 0.15;
-    let isSnapped = false;
-
-    // ====== DRAG BEHAVIOR ======
-    const drag = new BABYLON.PointerDragBehavior({dragPlaneNormal: new BABYLON.Vector3(0,1,0)});
-    processor.addBehavior(drag);
-
-    drag.onDragStartObservable.add(() => {
-      setProcColor(new BABYLON.Color3(0.2, 0.6, 1)); // biru saat di-grab
-      setSocketColor(new BABYLON.Color3(1, 0.6, 0.1)); // oranye socket
-    });
-
-    drag.onDragObservable.add(() => {
-      if (!socketCPU) return;
-      const dist = BABYLON.Vector3.Distance(processor.position, socketCPU.getAbsolutePosition());
-      if (dist < SNAP_DISTANCE)
-        setSocketColor(new BABYLON.Color3(1, 0.6, 0.1));
-      else
-        setSocketColor(BABYLON.Color3.Black());
-    });
-
-    drag.onDragEndObservable.add(() => {
-      if (!socketCPU) return;
-      const dist = BABYLON.Vector3.Distance(processor.position, socketCPU.getAbsolutePosition());
-      if (dist < SNAP_DISTANCE) {
-        processor.position.copyFrom(socketCPU.getAbsolutePosition());
-        processor.position.y += 0.025; // pas di atas socket
-        isSnapped = true;
-      } else {
-        isSnapped = false;
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PC Assembly VR</title>
+    <style>
+      html, body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
       }
-      setProcColor(BABYLON.Color3.Black());
-      setSocketColor(BABYLON.Color3.Black());
-    });
-
-    // ====== HOVER EFFECT ======
-    scene.onPointerObservable.add((pi) => {
-      if (isSnapped || drag.dragging) return;
-      const pick = scene.pick(scene.pointerX, scene.pointerY);
-      if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh)) {
-        setProcColor(new BABYLON.Color3(0.2, 0.5, 1)); // biru hover
-      } else {
-        setProcColor(BABYLON.Color3.Black());
+      canvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
       }
-    }, BABYLON.PointerEventTypes.POINTERMOVE);
+    </style>
+  </head>
 
-    // ====== DAPAT DILEPAS LAGI ======
-    scene.onPointerDown = () => {
-      const pick = scene.pick(scene.pointerX, scene.pointerY);
-      if (isSnapped && pick.hit && processor.getChildMeshes().includes(pick.pickedMesh)) {
-        isSnapped = false;
-        processor.position.y += 0.05;
-      }
-    };
+  <body>
+    <canvas id="renderCanvas"></canvas>
 
-    // ====== VR SUPPORT ======
-    const xr = await scene.createDefaultXRExperienceAsync({floorMeshes:[ground]});
-    const rig = xr.baseExperience.camera.parent;
-    if (rig) rig.scaling = new BABYLON.Vector3(10,10,10);
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
-    return scene;
-  };
-
-  createScene().then(scene => engine.runRenderLoop(() => scene.render()));
-  window.addEventListener("resize", () => engine.resize());
-  </script>
-</body>
+    <!-- Your scripts -->
+    <script type="module" src="./main.js"></script>
+  </body>
 </html>
