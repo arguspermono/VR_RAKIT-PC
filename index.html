@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Babylon VR - Processor Snap ke Motherboard</title>
+  <title>Babylon VR - Processor Snap ke Socket CPU (Final)</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <style>
@@ -37,30 +37,34 @@
       .catch(()=>console.warn("Background not found, skipped."));
 
     // ====== LOAD MOTHERBOARD ======
-    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "motherboard.glb", scene);
+    console.log("🔍 Memuat motherboard3.glb...");
+    const moboResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "motherboard3.glb", scene);
     const mobo = moboResult.meshes[0];
     mobo.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
     mobo.position = new BABYLON.Vector3(0,1,-1);
-    const moboChildren = mobo.getChildMeshes();
+
+    const socketCPU = moboResult.meshes.find(m => m.name.toLowerCase() === "socket_cpu");
+if (!socketCPU) {
+  console.warn("⚠️ Mesh socket_cpu tidak ditemukan!");
+} else {
+  console.log("✅ Socket CPU ditemukan:", socketCPU.name);
+  if (socketCPU.material) {
+    socketCPU.material = socketCPU.material.clone("socketCPU_highlight");
+  }
+}
 
     // ====== LOAD PROCESSOR ======
     const procResult = await BABYLON.SceneLoader.ImportMeshAsync("", "assets/", "processor.glb", scene);
     const processor = procResult.meshes[0];
-    processor.scaling = new BABYLON.Vector3(0.4,0.4,0.4);
-    processor.position = new BABYLON.Vector3(0.4,1.2,-1);
+    processor.scaling = new BABYLON.Vector3(0.2,0.2,0.2);
+    processor.position = new BABYLON.Vector3(0.5,1.2,-1);
     processor.isPickable = true;
 
-    // ====== COLOR HELPERS ======
-    const setMoboColor = (col) => {
-      moboChildren.forEach(m => { if (m.material) m.material.emissiveColor = col; });
-    };
-    const setProcColor = (col) => {
-      processor.getChildMeshes().forEach(m => { if (m.material) m.material.emissiveColor = col; });
-    };
+    // ====== UTILITAS WARNA ======
+    const setSocketColor = (col) => { if (socketCPU?.material) socketCPU.material.emissiveColor = col; };
+    const setProcColor = (col) => { processor.getChildMeshes().forEach(m => m.material && (m.material.emissiveColor = col)); };
 
-    // ====== SNAP LOGIC ======
-    const SNAP_DISTANCE = 0.25;
-    const SNAP_POS = mobo.position.clone().add(new BABYLON.Vector3(0, 0.05, 0));
+    const SNAP_DISTANCE = 0.15;
     let isSnapped = false;
 
     // ====== DRAG BEHAVIOR ======
@@ -69,29 +73,30 @@
 
     drag.onDragStartObservable.add(() => {
       setProcColor(new BABYLON.Color3(0.2, 0.6, 1)); // biru saat di-grab
-      setMoboColor(new BABYLON.Color3(1, 0.6, 0.1)); // mobo oranye
+      setSocketColor(new BABYLON.Color3(1, 0.6, 0.1)); // oranye socket
     });
 
     drag.onDragObservable.add(() => {
-      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
-      if (dist < SNAP_DISTANCE) {
-        setMoboColor(new BABYLON.Color3(1, 0.6, 0.1));
-      } else {
-        setMoboColor(new BABYLON.Color3(0, 0, 0));
-      }
+      if (!socketCPU) return;
+      const dist = BABYLON.Vector3.Distance(processor.position, socketCPU.getAbsolutePosition());
+      if (dist < SNAP_DISTANCE)
+        setSocketColor(new BABYLON.Color3(1, 0.6, 0.1));
+      else
+        setSocketColor(BABYLON.Color3.Black());
     });
 
     drag.onDragEndObservable.add(() => {
-      const dist = BABYLON.Vector3.Distance(processor.position, SNAP_POS);
+      if (!socketCPU) return;
+      const dist = BABYLON.Vector3.Distance(processor.position, socketCPU.getAbsolutePosition());
       if (dist < SNAP_DISTANCE) {
-        processor.position.copyFrom(SNAP_POS);
+        processor.position.copyFrom(socketCPU.getAbsolutePosition());
+        processor.position.y += 0.025; // pas di atas socket
         isSnapped = true;
       } else {
         isSnapped = false;
       }
-      // setelah snap -> warna normal lagi
       setProcColor(BABYLON.Color3.Black());
-      setMoboColor(BABYLON.Color3.Black());
+      setSocketColor(BABYLON.Color3.Black());
     });
 
     // ====== HOVER EFFECT ======
@@ -99,18 +104,18 @@
       if (isSnapped || drag.dragging) return;
       const pick = scene.pick(scene.pointerX, scene.pointerY);
       if (pick.hit && pick.pickedMesh && processor.getChildMeshes().includes(pick.pickedMesh)) {
-        setProcColor(new BABYLON.Color3(0.2, 0.5, 1)); // biru saat hover
+        setProcColor(new BABYLON.Color3(0.2, 0.5, 1)); // biru hover
       } else {
-        setProcColor(BABYLON.Color3.Black()); // normal
+        setProcColor(BABYLON.Color3.Black());
       }
     }, BABYLON.PointerEventTypes.POINTERMOVE);
 
-    // ====== BISA AMBIL LAGI SETELAH SNAP ======
+    // ====== DAPAT DILEPAS LAGI ======
     scene.onPointerDown = () => {
       const pick = scene.pick(scene.pointerX, scene.pointerY);
       if (isSnapped && pick.hit && processor.getChildMeshes().includes(pick.pickedMesh)) {
         isSnapped = false;
-        processor.position.y += 0.05; // naik sedikit biar bisa digrab lagi
+        processor.position.y += 0.05;
       }
     };
 
