@@ -9,7 +9,7 @@ export async function createScene(engine, canvas) {
   // -----------------------------------------------------------
   const camera = new BABYLON.UniversalCamera(
     "playerCam",
-    new BABYLON.Vector3(0, 1.7, 0),
+    new BABYLON.Vector3(0, 0.2, 0),
     scene
   );
   camera.attachControl(canvas, true);
@@ -131,6 +131,21 @@ export async function createScene(engine, canvas) {
     moboResult,
     socketNames: ["socket", "socket_cpu", "cpu_socket"],
   });
+
+  // --- AUTO ALIGN CAMERA TO FLOOR ---
+  const floorMesh = labResult.meshes.find((m) =>
+    /floor|lantai|ground/i.test(m.name)
+  );
+
+  if (floorMesh) {
+    const floorBB = floorMesh.getBoundingInfo().boundingBox;
+    const floorY = floorBB.maximumWorld.y;
+
+    // posisi mata = floor + ellipsoidOffset.y
+    camera.position.y = floorY + camera.ellipsoidOffset.y;
+
+    console.log("Floor Y:", floorY, "Camera Y:", camera.position.y);
+  }
 
   return scene;
 }
