@@ -3,27 +3,27 @@ import { createScene } from "./scene.js";
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
 
-// UI elements
+// Ambil elemen menu
 const menu = document.getElementById("mainMenu");
 const startBtn = document.getElementById("startBtn");
 
 let scene = null;
 
-// === START ONLY AFTER BUTTON CLICK ===
+// Jangan buat scene apapun sebelum tombol diklik
+
 startBtn.addEventListener("click", async () => {
-  // hide menu
+  // Hide main menu
   menu.style.display = "none";
 
-  // Create Babylon scene
+  // Create the real scene
   scene = await createScene(engine, canvas);
 
-  // Start rendering
   engine.runRenderLoop(() => {
     scene.render();
   });
-
-  engine.resize();
 });
 
-// Keep canvas sized
-window.addEventListener("resize", () => engine.resize());
+// Resize handler
+window.addEventListener("resize", () => {
+  engine.resize();
+});
