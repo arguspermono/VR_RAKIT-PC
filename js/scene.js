@@ -134,19 +134,12 @@ export async function createScene(engine, canvas) {
     /floor|lantai|ground/i.test(m.name)
   );
 
+  // ALIGN CAMERA HEIGHT TO FLOOR (ONCE — SAFE)
   if (floorMesh) {
     const floorBB = floorMesh.getBoundingInfo().boundingBox;
     const floorY = floorBB.maximumWorld.y;
 
-    // Tinggi mata VR = floor + 1.7m
-    const targetY = floorY + 1.7;
-
-    // Set hanya jika kamera masih di posisi default
-    if (camera.position.y < 0.5) {
-      camera.position.y = targetY;
-    }
-
-    console.log("Floor Y:", floorY, "Camera Y:", camera.position.y);
+    camera.position.y = floorY + 1.7;
   }
 
   // -----------------------------------------------------------
