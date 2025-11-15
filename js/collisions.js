@@ -1,12 +1,18 @@
 // project/src/collisions.js
 export function setupColliders(scene) {
-  // Mark large environment meshes as collidable (already set in scene.js)
-  // Optionally create simple invisible boxes for desks/chairs if you want stronger blocking.
-  // Example: iterate through loaded.case or loaded.world to find tables by name and set checkCollisions=true
+  // Tandai semua komponen yang dimuat sebagai collidable
   const loaded = scene.__app?.loaded || {};
-  if (loaded.case)
-    loaded.case.meshes.forEach((m) => (m.checkCollisions = true));
-  if (loaded.motherboard)
-    loaded.motherboard.meshes.forEach((m) => (m.checkCollisions = true));
-  // If you need explicit bounding box blockers: create simple boxes using the bounding info of target mesh.
+
+  // Iterasi di semua komponen yang dimuat (case, mobo, cpu, gpu, dll.)
+  Object.keys(loaded).forEach((key) => {
+    const item = loaded[key];
+    if (item && item.meshes) {
+      item.meshes.forEach((m) => {
+        m.checkCollisions = true;
+      });
+    }
+  });
+
+  // Catatan: Collider lingkungan (lab/meja) sudah diaktifkan di scene.js.
+  // Fungsi ini memastikan semua bagian dinamis juga memiliki collider.
 }

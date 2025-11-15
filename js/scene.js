@@ -4,6 +4,8 @@ import {
   autoPlacePartsOnTable,
   applyComponentScale,
 } from "./utils.js";
+import { detectSlots } from "./slots.js";
+import { setupColliders } from "./collisions.js"; // <--- DITAMBAHKAN
 
 export async function createScene(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
@@ -79,7 +81,7 @@ export async function createScene(engine, canvas) {
 
       res.meshes.forEach((m) => {
         m.isPickable = true;
-        m.checkCollisions = false;
+        // m.checkCollisions = false; <--- DIHAPUS (Collider diaktifkan di setupColliders)
       });
     } catch (e) {
       console.warn(`Failed to load ${a.key}:`, e);
@@ -103,38 +105,63 @@ export async function createScene(engine, canvas) {
     camera,
     table: tableMesh,
     loaded,
+    slots: {}, // akan di-set segera setelah detectSlots dipanggil
+    xr: null,
   };
 
   // -----------------------------------------------------------
-  // ENABLE WEBXR + LASER POINTER
+  // DETECT SLOTS (PANGGIL DI SINI setelah semua asset loaded)
   // -----------------------------------------------------------
-  scene
-    .createDefaultXRExperienceAsync({
+  // detectSlots akan mencari di loaded.* serta fallback ke scene.meshes bila perlu
+  try {
+    scene.__app.slots = detectSlots(scene);
+  } catch (e) {
+    console.warn("detectSlots error:", e);
+    scene.__app.slots = {};
+  }
+
+  // -----------------------------------------------------------
+  // SETUP COLLIDERS for all components <--- DITAMBAHKAN
+  // -----------------------------------------------------------
+  setupColliders(scene);
+
+  // -----------------------------------------------------------
+  // ENABLE WEBXR + LASER POINTER (await supaya XR siap saat createScene selesai)
+  // -----------------------------------------------------------
+  try {
+    const xr = await scene.createDefaultXRExperienceAsync({
       floorMeshes: scene.meshes.filter((m) => m.checkCollisions),
-    })
-    .then((xr) => {
-      console.log("✔ WebXR Ready");
-
-      // Aktifkan laser pointer
-      xr.pointerSelection =
-        xr.pointerSelection ||
-        xr.featuresManager.enableFeature(
-          BABYLON.WebXRFeatureName.POINTER_SELECTION,
-          "stable"
-        );
-
-      xr.pointerSelection.enablePointerSelection();
-
-      // Debug: cek controller
-      xr.input.onControllerAddedObservable.add((controller) => {
-        console.log(
-          "🕹 Controller detected:",
-          controller.inputSource.handedness
-        );
-      });
-
-      scene.__app.xr = xr;
     });
+
+    console.log("✔ WebXR Ready");
+
+    // Babylon v8: enable pointer selection feature via featuresManager,
+    // do NOT call enablePointerSelection() (deprecated).
+    try {
+      xr.featuresManager.enableFeature(
+        BABYLON.WebXRFeatureName.POINTER_SELECTION,
+        "stable",
+        {
+          enablePointerSelectionOnAllControllers: true,
+        }
+      );
+    } catch (e) {
+      // fallback: some distributions already expose pointerSelection
+      console.warn(
+        "pointer selection enable failed (maybe already enabled):",
+        e
+      );
+    }
+
+    xr.input.onControllerAddedObservable.add((controller) => {
+      console.log("🕹 Controller detected:", controller.inputSource.handedness);
+    });
+
+    // Simpan xr ke scene.__app (XR siap ketika createScene resolves)
+    scene.__app.xr = xr;
+  } catch (e) {
+    console.warn("Failed to initialize XR:", e);
+  }
 
   return scene;
 }
