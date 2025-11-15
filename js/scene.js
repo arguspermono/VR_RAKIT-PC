@@ -132,6 +132,8 @@ export async function createScene(engine, canvas) {
           controller.inputSource.handedness
         );
       });
+
+      scene.__app.xr = xr;
     });
 
   return scene;
