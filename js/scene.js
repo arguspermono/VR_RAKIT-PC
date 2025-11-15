@@ -9,7 +9,7 @@ export async function createScene(engine, canvas) {
   // -----------------------------------------------------------
   const camera = new BABYLON.UniversalCamera(
     "playerCam",
-    new BABYLON.Vector3(0, 0.2, 0),
+    new BABYLON.Vector3(0, 1.7, 0),
     scene
   );
   camera.attachControl(canvas, true);
