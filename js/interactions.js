@@ -1,20 +1,43 @@
 // project/src/interactions.js
 import { findMeshByName } from "./utils.js";
 
+// Helper dipindahkan ke atas agar bisa dipakai Mouse & VR
+function getValidSlotFor(key, slots) {
+  if (key === "mobo") return slots.mobo;
+  if (key === "cpu") return slots.cpu;
+  if (key === "ram1") return slots.ram1;
+  if (key === "ram2") return slots.ram2;
+  if (key === "ram3") return slots.ram3;
+  if (key === "ram4") return slots.ram4;
+  if (key === "gpu") return slots.gpu_mobo;
+  if (key === "psu") return slots.psu;
+  if (key === "hdd") return slots.hdd;
+  if (key === "fan") return slots.fan;
+  return null;
+}
+
 export function attachInteractions(scene) {
   const { loaded, slots } = scene.__app;
 
   // ============================================================
-  // 1. MOUSE DRAG (Diubah: Filter 'case')
+  // 1. MOUSE DRAG (Diperbaiki: Hanya cek slot yang valid)
   // ============================================================
   const hlMouse = new BABYLON.HighlightLayer("HL_MOUSE", scene);
 
-  // Filter 'case' agar tidak bisa di-drag
   Object.keys(loaded)
     .filter((key) => key !== "case")
     .forEach((key) => {
       const item = loaded[key];
       if (!item || !item.root) return;
+
+      // Ambil slot yang valid untuk item INI
+      const validSlot = getValidSlotFor(key, slots);
+
+      // Jika item ini tidak punya slot (misal: kabel), jangan tambahkan behavior
+      if (!validSlot || !validSlot.mesh) {
+        // console.log(`Item ${key} tidak punya slot valid, drag dibatalkan.`);
+        return;
+      }
 
       const root = item.root;
       const drag = new BABYLON.PointerDragBehavior({
@@ -23,80 +46,76 @@ export function attachInteractions(scene) {
 
       root.addBehavior(drag);
 
-      let closestSlot = null;
+      let canSnap = false;
 
+      // --- LOGIKA DRAG (Highlight) DIPERBAIKI ---
       drag.onDragObservable.add(() => {
-        closestSlot = null;
-        let minDist = 999;
-
-        const pos = root.getAbsolutePosition();
-
-        for (const sKey in slots) {
-          const s = slots[sKey];
-          if (s.used) continue;
-
-          const dist = BABYLON.Vector3.Distance(
-            pos,
-            s.mesh.getAbsolutePosition()
-          );
-
-          if (dist < minDist) {
-            minDist = dist;
-            closestSlot = s;
-          }
+        if (validSlot.used) {
+          hlMouse.removeAllMeshes();
+          return; // Slot sudah terisi
         }
+
+        canSnap = false;
+        const pos = root.getAbsolutePosition();
+        const dist = BABYLON.Vector3.Distance(
+          pos,
+          validSlot.mesh.getAbsolutePosition()
+        );
 
         hlMouse.removeAllMeshes();
 
-        if (closestSlot && minDist < 0.25) {
+        if (dist < 0.25) {
+          canSnap = true;
           hlMouse.addMesh(root, BABYLON.Color3.Green());
           hlMouse.addMesh(
-            closestSlot.mesh,
+            validSlot.mesh,
             BABYLON.Color3.FromHexString("#FFA500")
           );
         }
       });
 
+      // --- LOGIKA DRAG END (Snap) DIPERBAIKI ---
       drag.onDragEndObservable.add(() => {
-        if (!closestSlot) return;
+        hlMouse.removeAllMeshes();
 
-        const dist = BABYLON.Vector3.Distance(
-          root.getAbsolutePosition(),
-          closestSlot.mesh.getAbsolutePosition()
-        );
+        if (!canSnap || validSlot.used) return;
 
-        if (dist < 0.25) {
-          root.position.copyFrom(closestSlot.mesh.getAbsolutePosition());
-          root.position.y += 0.02;
-          closestSlot.used = true;
+        // Snap ke posisi slot
+        root.position.copyFrom(validSlot.mesh.getAbsolutePosition());
+        root.position.y += 0.02; // sedikit offset
+        validSlot.used = true;
 
-          // Parenting sesuai hierarki
-          if (key === "mobo" && loaded.case) root.setParent(loaded.case.root);
-
-          if (
-            ["cpu", "ram1", "ram2", "ram3", "ram4", "gpu"].includes(key) &&
-            loaded.mobo
-          ) {
-            root.setParent(loaded.mobo.root);
-          }
-
-          if (["psu", "hdd", "fan"].includes(key) && loaded.case) {
-            root.setParent(loaded.case.root);
-          }
-
-          hlMouse.addMesh(root, BABYLON.Color3.Green());
-          hlMouse.addMesh(
-            closestSlot.mesh,
-            BABYLON.Color3.FromHexString("#FFA500")
-          );
-        } else {
-          hlMouse.removeAllMeshes();
+        // Hentikan fisika agar objek tidak jatuh setelah di-snap
+        if (root.physicsImpostor) {
+          root.physicsImpostor.setMass(0);
+          root.physicsImpostor.sleep();
         }
+
+        // Parenting sesuai hierarki
+        if (key === "mobo" && loaded.case) root.setParent(loaded.case.root);
+
+        if (
+          ["cpu", "ram1", "ram2", "ram3", "ram4", "gpu"].includes(key) &&
+          loaded.mobo
+        ) {
+          root.setParent(loaded.mobo.root);
+        }
+
+        if (["psu", "hdd", "fan"].includes(key) && loaded.case) {
+          root.setParent(loaded.case.root);
+        }
+
+        // Final highlight
+        hlMouse.addMesh(root, BABYLON.Color3.Green());
+        hlMouse.addMesh(
+          validSlot.mesh,
+          BABYLON.Color3.FromHexString("#FFA500")
+        );
       });
     });
 
   // ============================================================
-  // 2. VR GRAB + VR SNAP (Diubah: Filter 'case')
+  // 2. VR GRAB + VR SNAP (hierarki-aware)
   // ============================================================
   const xr = scene.__app.xr;
   if (!xr) {
@@ -108,22 +127,7 @@ export function attachInteractions(scene) {
   const colorGreen = BABYLON.Color3.Green();
   const colorOrange = BABYLON.Color3.FromHexString("#FFA500");
 
-  // helper: valid slot for component key (hierarki)
-  function getValidSlotFor(key) {
-    if (key === "mobo") return slots.mobo;
-    if (key === "cpu") return slots.cpu;
-    if (key === "ram1") return slots.ram1;
-    if (key === "ram2") return slots.ram2;
-    if (key === "ram3") return slots.ram3;
-    if (key === "ram4") return slots.ram4;
-    if (key === "gpu") return slots.gpu_mobo;
-    if (key === "psu") return slots.psu;
-    if (key === "hdd") return slots.hdd;
-    if (key === "fan") return slots.fan;
-    return null;
-  }
-
-  // find main mesh to highlight (largest mesh) to avoid highlighting tiny submeshes
+  // (findMainMesh helper tetap sama)
   function getMainMesh(item) {
     if (!item || !item.meshes) return item?.root;
     let biggest = item.meshes[0];
@@ -141,18 +145,22 @@ export function attachInteractions(scene) {
     return biggest;
   }
 
-  // Filter 'case' agar tidak bisa di-grab
+  // Loop VR Grab
   Object.keys(loaded)
     .filter((key) => key !== "case")
     .forEach((key) => {
       const item = loaded[key];
       if (!item || !item.root) return;
 
-      const slot = getValidSlotFor(key);
+      // Ambil slot valid menggunakan helper
+      const slot = getValidSlotFor(key, slots);
       if (!slot || !slot.mesh) return;
 
       const root = item.root;
       const mainMesh = getMainMesh(item);
+
+      // Pastikan impostor ada
+      if (!root.physicsImpostor) return;
 
       xr.input.onControllerAddedObservable.add((controller) => {
         controller.onMotionControllerInitObservable.add((mc) => {
@@ -160,12 +168,11 @@ export function attachInteractions(scene) {
           const squeeze = mc.getComponent("squeeze");
 
           let grabbed = false;
+          const hand = controller.grip || controller.pointer;
+          if (!hand) return;
 
           const tryGrab = () => {
-            if (grabbed) return;
-
-            const hand = controller.grip || controller.pointer;
-            if (!hand) return;
+            if (grabbed || slot.used) return;
 
             const dist = BABYLON.Vector3.Distance(
               root.getAbsolutePosition(),
@@ -174,7 +181,10 @@ export function attachInteractions(scene) {
 
             if (dist < 0.22) {
               grabbed = true;
-              root.setParent(hand);
+
+              // Nonaktifkan fisika sementara
+              root.physicsImpostor.sleep();
+              root.setParent(hand); // Parenting ke tangan
 
               if (mainMesh) hlVR.addMesh(mainMesh, colorGreen);
             }
@@ -183,8 +193,11 @@ export function attachInteractions(scene) {
           const releaseGrab = () => {
             if (!grabbed) return;
 
-            root.setParent(null);
+            root.setParent(null); // Lepas dari tangan
             grabbed = false;
+
+            // Aktifkan lagi fisika (akan jatuh jika tidak di-snap)
+            root.physicsImpostor.wakeUp();
 
             const dist = BABYLON.Vector3.Distance(
               root.getAbsolutePosition(),
@@ -198,6 +211,10 @@ export function attachInteractions(scene) {
               root.position.copyFrom(slot.mesh.getAbsolutePosition());
               root.position.y += 0.02;
               slot.used = true;
+
+              // Matikan fisika permanen setelah snap
+              root.physicsImpostor.setMass(0);
+              root.physicsImpostor.sleep();
 
               if (key === "mobo" && loaded.case)
                 root.setParent(loaded.case.root);
@@ -233,7 +250,7 @@ export function attachInteractions(scene) {
 
           // preview highlight while grabbed
           scene.onBeforeRenderObservable.add(() => {
-            if (!grabbed) return;
+            if (!grabbed || slot.used) return;
             const dist = BABYLON.Vector3.Distance(
               root.getAbsolutePosition(),
               slot.mesh.getAbsolutePosition()
