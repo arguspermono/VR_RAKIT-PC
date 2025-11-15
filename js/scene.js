@@ -142,7 +142,7 @@ export async function createScene(engine, canvas) {
     const floorY = floorBB.maximumWorld.y;
 
     // posisi mata = floor + ellipsoidOffset.y
-    camera.position.y = floorY + camera.ellipsoidOffset.y;
+    camera.position.y = floorY + camera.ellipsoidOffset.y + 0.8;
 
     console.log("Floor Y:", floorY, "Camera Y:", camera.position.y);
   }
