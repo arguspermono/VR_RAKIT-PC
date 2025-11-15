@@ -9,18 +9,13 @@ export async function createScene(engine, canvas) {
   // -----------------------------------------------------------
   const camera = new BABYLON.UniversalCamera(
     "playerCam",
-    new BABYLON.Vector3(0, 1.7, 0),
+    new BABYLON.Vector3(0, 1.7, 0), // initial spawn
     scene
   );
   camera.attachControl(canvas, true);
 
   // Fix clipping (agar objek tidak hilang ketika dekat)
   camera.minZ = 0.01;
-
-  // Enable collisions
-  scene.collisionsEnabled = true;
-  camera.checkCollisions = true;
-  camera.applyGravity = true;
 
   // Collider shape (capsule)
   camera.ellipsoid = new BABYLON.Vector3(0.4, 0.9, 0.4);
@@ -132,7 +127,9 @@ export async function createScene(engine, canvas) {
     socketNames: ["socket", "socket_cpu", "cpu_socket"],
   });
 
-  // --- AUTO ALIGN CAMERA TO FLOOR ---
+  // -----------------------------------------------------------
+  // AUTO ALIGN CAMERA TO FLOOR (ONLY ONCE)
+  // -----------------------------------------------------------
   const floorMesh = labResult.meshes.find((m) =>
     /floor|lantai|ground/i.test(m.name)
   );
@@ -141,11 +138,23 @@ export async function createScene(engine, canvas) {
     const floorBB = floorMesh.getBoundingInfo().boundingBox;
     const floorY = floorBB.maximumWorld.y;
 
-    // posisi mata = floor + ellipsoidOffset.y
-    camera.position.y = floorY + camera.ellipsoidOffset.y + 0.8;
+    // Tinggi mata VR = floor + 1.7m
+    const targetY = floorY + 1.7;
+
+    // Set hanya jika kamera masih di posisi default
+    if (camera.position.y < 0.5) {
+      camera.position.y = targetY;
+    }
 
     console.log("Floor Y:", floorY, "Camera Y:", camera.position.y);
   }
+
+  // -----------------------------------------------------------
+  // Enable collisions AFTER position is corrected
+  // -----------------------------------------------------------
+  scene.collisionsEnabled = true;
+  camera.checkCollisions = true;
+  camera.applyGravity = true;
 
   return scene;
 }
