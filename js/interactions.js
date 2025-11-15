@@ -1,33 +1,82 @@
-export function attachInteractions({
-  scene,
-  processor,
-  mobo,
-  moboResult,
-  socketNames,
-}) {
-  if (!processor) return;
+// project/src/interactions.js
+import { findMeshByName } from "./utils.js";
 
-  processor.isPickable = true;
+export function attachInteractions(scene) {
+  const { loaded } = scene.__app;
+  if (!loaded.cpu || !loaded.mobo) return;
 
-  // Drag behavior (mouse)
+  const processor = loaded.cpu.root;
+  const moboMeshes = loaded.mobo.meshes;
+
+  // -----------------------------------------------------------
+  // FIND CPU SOCKET
+  // -----------------------------------------------------------
+  const socketNames = ["socket", "socket_cpu", "cpu_socket"];
+
+  let socketCPU = null;
+
+  for (const m of moboMeshes) {
+    const name = m.name.toLowerCase();
+    if (socketNames.some((sn) => name.includes(sn))) {
+      socketCPU = m;
+      break;
+    }
+  }
+
+  if (!socketCPU) {
+    console.warn("⚠ CPU Socket Not Found!");
+    return;
+  }
+
+  console.log("✅ CPU Socket Found:", socketCPU.name);
+
+  // -----------------------------------------------------------
+  // HIGHLIGHT LAYER
+  // -----------------------------------------------------------
+  const hl = new BABYLON.HighlightLayer("hl", scene);
+
+  const highlight = (mesh, color) => {
+    hl.addMesh(mesh, color);
+  };
+
+  const unhighlight = (mesh) => hl.removeMesh(mesh);
+
+  // -----------------------------------------------------------
+  // DRAG BEHAVIOR
+  // -----------------------------------------------------------
   const drag = new BABYLON.PointerDragBehavior({
     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
   });
-  drag.useObjectCenter = true;
+
   processor.addBehavior(drag);
 
-  // Snap to socket
-  drag.onDragEndObservable.add(() => {
-    const socket = moboResult.meshes.find((m) =>
-      socketNames.some((n) => m.name.toLowerCase().includes(n))
+  drag.onDragStartObservable.add(() => {
+    highlight(socketCPU, BABYLON.Color3.Yellow());
+  });
+
+  drag.onDragObservable.add(() => {
+    const D = BABYLON.Vector3.Distance(
+      processor.getAbsolutePosition(),
+      socketCPU.getAbsolutePosition()
     );
-    if (!socket) return;
 
-    const sPos = socket.getAbsolutePosition();
-    const distance = BABYLON.Vector3.Distance(processor.position, sPos);
+    if (D < 0.12) highlight(socketCPU, BABYLON.Color3.Green());
+    else highlight(socketCPU, BABYLON.Color3.Yellow());
+  });
 
-    if (distance < 0.2) {
-      processor.position = sPos.add(new BABYLON.Vector3(0, 0.02, 0));
+  drag.onDragEndObservable.add(() => {
+    const D = BABYLON.Vector3.Distance(
+      processor.getAbsolutePosition(),
+      socketCPU.getAbsolutePosition()
+    );
+
+    if (D < 0.12) {
+      processor.position.copyFrom(socketCPU.getAbsolutePosition());
+      processor.position.y += 0.015;
+
+      highlight(socketCPU, BABYLON.Color3.Green());
+    } else {
+      unhighlight(socketCPU);
     }
   });
 }
