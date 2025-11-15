@@ -42,7 +42,9 @@ export async function createScene(engine, canvas) {
   lab.meshes.forEach((m) => (m.checkCollisions = true));
 
   const tableMesh =
-    lab.meshes.find((m) => /table|meja|desk/i.test(m.name)) || null;
+    lab.meshes.find((m) => m.name.includes("LongTable")) || null;
+
+  console.log("TABLE FOUND:", tableMesh?.name);
 
   // -----------------------------------------------------------
   // LOAD ALL COMPONENTS
@@ -102,6 +104,35 @@ export async function createScene(engine, canvas) {
     table: tableMesh,
     loaded,
   };
+
+  // -----------------------------------------------------------
+  // ENABLE WEBXR + LASER POINTER
+  // -----------------------------------------------------------
+  scene
+    .createDefaultXRExperienceAsync({
+      floorMeshes: scene.meshes.filter((m) => m.checkCollisions),
+    })
+    .then((xr) => {
+      console.log("✔ WebXR Ready");
+
+      // Aktifkan laser pointer
+      xr.pointerSelection =
+        xr.pointerSelection ||
+        xr.featuresManager.enableFeature(
+          BABYLON.WebXRFeatureName.POINTER_SELECTION,
+          "stable"
+        );
+
+      xr.pointerSelection.enablePointerSelection();
+
+      // Debug: cek controller
+      xr.input.onControllerAddedObservable.add((controller) => {
+        console.log(
+          "🕹 Controller detected:",
+          controller.inputSource.handedness
+        );
+      });
+    });
 
   return scene;
 }
