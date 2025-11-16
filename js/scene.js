@@ -116,7 +116,11 @@ function createScene(engine, canvas) {
           camera.position.y = floorY + camera.ellipsoidOffset.y;
         }
 
-        return scene;
+        // Tambahkan XR helper (JANGAN pakai await)
+        return scene.createDefaultXRExperienceAsync({
+          uiOptions: { sessionMode: "immersive-vr" },
+          optionalFeatures: true
+        }).then(() => scene);
       });
     });
   });
