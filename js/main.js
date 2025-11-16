@@ -22,22 +22,20 @@ const overlay = BABYLON.MeshBuilder.CreatePlane(
     menuScene
 );
 
-overlay.position = new BABYLON.Vector3(0, 1.5, 1);  
 overlay.isPickable = false;
-
-// Material transparan
-const overlayMat = new BABYLON.StandardMaterial("overlayMat", menuScene);
-overlayMat.diffuseColor = new BABYLON.Color3(0, 0, 0); // hitam
-overlayMat.alpha = 0.45; // transparansi (0.0–1.0)
+overlayMat = new BABYLON.StandardMaterial("overlayMat", menuScene);
+overlayMat.diffuseColor = new BABYLON.Color3(0,0,0);
+overlayMat.alpha = 0.45;
+overlayMat.backFaceCulling = false; // penting!
 overlay.material = overlayMat;
 
 // Always face camera
 menuScene.onBeforeRenderObservable.add(() => {
-    overlay.position = menuCamera.position
-        .add(menuCamera.getForwardRay().direction.scale(1.2));
-
-    overlay.lookAt(menuCamera.position);
+    const forward = menuCamera.getForwardRay().direction;
+    overlay.position = menuCamera.position.add(forward.scale(1.2));
+    overlay.lookAt(menuCamera.position.add(forward.scale(2))); // pastikan menghadap kamera
 });
+
 
 // =============================
 // LOAD BACKGROUND GLB
