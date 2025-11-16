@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+</head>
+<body>
+<canvas id="c" style="width:100%;height:100%"></canvas>
+<script>
+const canvas = document.getElementById("c");
+const engine = new BABYLON.Engine(canvas, true);
+
+const createScene = async () => {
+  const scene = new BABYLON.Scene(engine);
+  new BABYLON.ArcRotateCamera("cam", Math.PI/2, 1, 5, BABYLON.Vector3.Zero(), scene).attachControl(canvas, true);
+  new BABYLON.HemisphericLight("l", new BABYLON.Vector3(0,1,0), scene);
+
+  // ==========================
+  // FUNCTION LIST MESHES
+  // ==========================
+  const listMeshes = (label, result) => {
+    console.log(`\n============== ${label} ==============\n`);
+    console.log(`📦 Total Mesh: ${result.meshes.length}`);
+    result.meshes.forEach((m, i) => {
+      const p = m.getBoundingInfo().boundingBox.centerWorld;
+      console.log(`#${i} | ${m.name}`);
+      console.log(`   ↳ x:${p.x.toFixed(3)}, y:${p.y.toFixed(3)}, z:${p.z.toFixed(3)}`);
+    });
+    console.log("\n====================================\n");
+  };
+
+  // ==========================
+  // LOAD MOTHERBOARD
+  // ==========================
+  const mobo = await BABYLON.SceneLoader.ImportMeshAsync("", "/assets/", "motherboard.glb", scene);
+  listMeshes("MOTHERBOARD", mobo);
+
+  // ==========================
+  // LOAD PC CASE
+  // ==========================
+  const pc = await BABYLON.SceneLoader.ImportMeshAsync("", "/assets/", "pc_case.glb", scene);
+  listMeshes("PC CASE", pc);
+
+   const processor = await BABYLON.SceneLoader.ImportMeshAsync("", "/assets/", "processor.glb", scene);
+  listMeshes("processor", processor);
+
+  return scene;
+};
+
+createScene().then(scene=>{
+  engine.runRenderLoop(()=>scene.render());
+});
+</script>
+</body>
+</html>
