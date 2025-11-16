@@ -1,18 +1,26 @@
-// project/src/collisions.js
 export function setupColliders(scene) {
-  // Tandai semua komponen yang dimuat sebagai collidable
   const loaded = scene.__app?.loaded || {};
 
-  // Iterasi di semua komponen yang dimuat (case, mobo, cpu, gpu, dll.)
   Object.keys(loaded).forEach((key) => {
     const item = loaded[key];
-    if (item && item.meshes) {
+    if (!item) return;
+
+    if (item.root) item.root.checkCollisions = true;
+
+    if (item.meshes) {
       item.meshes.forEach((m) => {
-        m.checkCollisions = true;
+        if (m.name.match(/shell|body|panel|cover/i)) {
+          m.checkCollisions = true;
+        } else if (m !== item.root) {
+          m.checkCollisions = false;
+        }
       });
     }
   });
 
-  // Catatan: Collider lingkungan (lab/meja) sudah diaktifkan di scene.js.
-  // Fungsi ini memastikan semua bagian dinamis juga memiliki collider.
+  scene.meshes.forEach((m) => {
+    if (m.name.match(/table|floor|ground|longtable/i)) {
+      m.checkCollisions = true;
+    }
+  });
 }
