@@ -20,7 +20,7 @@ export function applyComponentScale(loaded) {
     loaded.cooler.root.scaling = new BABYLON.Vector3(0.4, 0.4, 0.4);
 
   if (loaded.hdd)
-    loaded.hdd1.root.scaling = new BABYLON.Vector3(0.35, 0.35, 0.35);
+    loaded.hdd.root.scaling = new BABYLON.Vector3(0.35, 0.35, 0.35);
 
   ["ram1", "ram2", "ram3", "ram4"].forEach((r) => {
     if (loaded[r]) loaded[r].root.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
@@ -49,9 +49,7 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
     loaded.cpu,
     loaded.gpu,
     loaded.psu,
-    loaded.cooler,
-    loaded.hdd1,
-    loaded.hdd2,
+    loaded.hdd,
     loaded.ram1,
     loaded.ram2,
   ];

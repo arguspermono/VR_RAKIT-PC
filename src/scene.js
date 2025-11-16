@@ -7,7 +7,6 @@ import { detectSlots } from "./slots.js";
 import { setupColliders } from "./collisions.js";
 
 export async function createScene(engine, canvas) {
-  
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
   scene.collisionsEnabled = true;
@@ -55,9 +54,7 @@ export async function createScene(engine, canvas) {
     { key: "gpu", file: "GPU.glb" },
     { key: "ram1", file: "ram_1.glb" },
     { key: "ram2", file: "ram_2.glb" },
-    { key: "ram3", file: "ram_3.glb" },
-    { key: "ram4", file: "ram_4.glb" },
-    { key: "hdd1", file: "hardisk.glb" },
+    { key: "hdd", file: "hardisk.glb" },
     { key: "psu", file: "PSU.glb" },
   ];
 

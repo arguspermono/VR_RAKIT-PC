@@ -14,7 +14,6 @@ export function detectSlots(scene) {
     add("mobo", findMeshByName(c, "MB_P"));
     add("psu", findMeshByName(c, "PSU_P"));
     add("hdd", findMeshByName(c, "HDD_P"));
-    add("fan", findMeshByName(c, "FCS_P"));
   }
 
   // MOBO
