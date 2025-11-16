@@ -38,7 +38,7 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
   const tableCenterZ = (bb.minimumWorld.z + bb.maximumWorld.z) / 2;
 
   const zOffset = -0.1;
-  const yOffset = 0.55; // lebih tinggi biar tidak tenggelam
+  const yOffset = 0.25; // lebih tinggi biar tidak tenggelam
 
   let startX = tableMesh.position.x + 0.8;
   const stepX = -0.55;
