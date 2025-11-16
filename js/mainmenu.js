@@ -2,78 +2,75 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
 
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
-  // PANEL 3D
+  // PANEL 3D UTAMA
   const panel = new BABYLON.GUI.StackPanel3D();
   panel.margin = 0.3;
   manager.addControl(panel);
 
   panel.position = new BABYLON.Vector3(0, 1.5, 2);
 
-  // PANEL BACKGROUND (GLASS)
+  // GLASS BACKGROUND
   const glass = BABYLON.MeshBuilder.CreatePlane("glassBg", { width: 2, height: 2.8 }, scene);
   const glassMat = new BABYLON.StandardMaterial("glassMat", scene);
 
   glassMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.alpha = 0.15;                           // Transparan
+  glassMat.alpha = 0.18;
   glassMat.specularColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
+  glassMat.environmentIntensity = 0.8;
   glassMat.backFaceCulling = false;
 
   glass.material = glassMat;
   glass.parent = panel.mesh;
-  glass.position.z = -0.05;                         // Di belakang tombol
+  glass.position.z = -0.05;
 
-  // Titik untuk blur
-  glassMat.indexOfRefraction = 0.98;
-  glassMat.environmentIntensity = 0.8;
 
-  // === TITLE ===
-  const title = new BABYLON.GUI.HolographicSlate("titleBox");
-  title.title = "PC ASSEMBLY";
-  title.dimensions = new BABYLON.Vector2(1.4, 0.45);
-  title.titleBarHeight = 0.001;                    // Hilangkan title bar
-  title.content.viewport = new BABYLON.Viewport(0, 0, 1, 1);
-  title.backPlate.material.alpha = 0;              // Hilangkan plate belakang
-  title.frontPlateMargin = 0.05;
+  // ============================
+  // TITLE (Teknik Baru - AGAR WORK)
+  // ============================
 
-  // Style text
-  const titleBlock = new BABYLON.GUI.TextBlock();
-  titleBlock.text = "PC ASSEMBLY";
-  titleBlock.color = "white";
-  titleBlock.fontSize = 68;
-  titleBlock.fontStyle = "bold";
+  // Plane kecil untuk title
+  const titlePlane = BABYLON.MeshBuilder.CreatePlane("titlePlane", { width: 1.6, height: 0.4 }, scene);
+  titlePlane.parent = panel.mesh;
+  titlePlane.position = new BABYLON.Vector3(0, 1.1, 0);
 
-  title.content.addControl(titleBlock);
+  const titleUI = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(titlePlane);
 
-  panel.addControl(title);
+  const titleText = new BABYLON.GUI.TextBlock();
+  titleText.text = "PC ASSEMBLY";
+  titleText.color = "white";
+  titleText.fontSize = 82;
+  titleText.fontStyle = "bold";
+  titleUI.addControl(titleText);
 
-  // Helper buat tombol glass
+
+  // ============================
+  // GLASS BUTTON FACTORY
+  // ============================
   function createGlassButton(text, callback) {
     const btn = new BABYLON.GUI.HolographicButton(text);
 
-    const mat = new BABYLON.StandardMaterial("glassBtnMat", scene);
+    const mat = new BABYLON.StandardMaterial("btnMat", scene);
     mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-    mat.alpha = 0.23; // lebih gelap
+    mat.alpha = 0.25;
     mat.specularColor = new BABYLON.Color3(1, 1, 1);
     mat.environmentIntensity = 1;
-    mat.backFaceCulling = false;
 
-    btn.pointLightColor = new BABYLON.Color3(0, 0, 0);
     btn.backMaterial = mat;
     btn.frontMaterial = mat;
 
     btn.text = text;
-    btn.onPointerUpObservable.add(callback);
+    btn.scaling = new BABYLON.Vector3(1.2, 0.45, 1);
 
-    btn.scaling = new BABYLON.Vector3(1.2, 0.4, 1);
+    btn.onPointerUpObservable.add(callback);
+    panel.addControl(btn);
 
     return btn;
   }
 
   // BUTTON SET
-  panel.addControl(createGlassButton("PC", onStartPC));
-  panel.addControl(createGlassButton("LAPTOP", onStartLaptop));
-  panel.addControl(createGlassButton("SERVER", onStartServer));
+  createGlassButton("PC", onStartPC);
+  createGlassButton("LAPTOP", onStartLaptop);
+  createGlassButton("SERVER", onStartServer);
 
   return panel;
 }
