@@ -1,38 +1,43 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>PC Assembly VR</title>
-    <style>
-      html, body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-      canvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
-    </style>
-  </head>
+<head>
+  <meta charset="utf-8" />
+  <title>PC Assembly VR</title>
+  <style>
+    html, body {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
 
-  <body> 
-    <canvas id="renderCanvas" touch-action="none" style="touch-action: none; -webkit-tap-highlight-color: transparent;" width="3390" height="3392" data-engine="Babylon.js v8.37.0" tabindex="1"></canvas>
+<body>
 
-    <!-- Babylon core -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <canvas id="renderCanvas"></canvas>
 
-    <!-- Babylon loaders -->
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <!-- Babylon Core -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
 
-    <!-- BABYLON.GUI (2D/3D GUI) — BUKAN MODULE -->
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.js"></script>
+  <!-- Babylon Loaders -->
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
-    <!-- Your module scripts -->
-    <script type="module" src="./js/main.js"></script>
-  </body>
-</html>
+  <!-- Babylon GUI (2D + 3D) -->
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.js"></script>
+
+  <!-- Your JS (non-module) -->
+  <script src="./js/mainmenu.js"></script>
+  <script src="./js/scene.js"></script>
+  <script src="./js/interactions.js"></script>
+  
+  <!-- Main JS (non-module) -->
+  <script src="./js/main.js"></script>
+
+</body>
 </html>

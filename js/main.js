@@ -1,19 +1,18 @@
-import { createMainMenu } from "./mainmenu.js";
-import { createScene } from "./scene.js";
-
-const canvas = document.getElementById("renderCanvas");
-const engine = new BABYLON.Engine(canvas, true);
+let canvas = document.getElementById("renderCanvas");
+let engine = new BABYLON.Engine(canvas, true);
 
 let scene = new BABYLON.Scene(engine);
 
-// tampilkan main menu
-await createMainMenu({
+// tampilkan main menu dahulu
+createMainMenu({
   scene,
   onStart: async () => {
-    scene = await createScene(engine, canvas);
+    scene.dispose(); // hapus scene menu
+    scene = await createScene(engine, canvas); // scene utama
   }
 });
 
+// render
 engine.runRenderLoop(() => {
   scene.render();
 });

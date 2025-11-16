@@ -1,4 +1,4 @@
-export function attachInteractions({
+function attachInteractions({
   scene,
   processor,
   mobo,
@@ -9,18 +9,20 @@ export function attachInteractions({
 
   processor.isPickable = true;
 
-  // Drag behavior (mouse)
+  // Drag behavior (mouse / pointer)
   const drag = new BABYLON.PointerDragBehavior({
     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
   });
-  drag.useObjectCenter = true;
-  processor.addBehavior(drag);
 
-  // Snap to socket
+  drag.useObjectCenter = true;
+  processor.addBehavior(ddrag);
+
+  // Snap CPU ke socket
   drag.onDragEndObservable.add(() => {
     const socket = moboResult.meshes.find((m) =>
       socketNames.some((n) => m.name.toLowerCase().includes(n))
     );
+
     if (!socket) return;
 
     const sPos = socket.getAbsolutePosition();

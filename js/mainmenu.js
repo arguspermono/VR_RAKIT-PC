@@ -1,18 +1,19 @@
-import { attachInteractions } from "./interactions.js"
+async function createMainMenu({ scene, onStart }) {
 
-export async function createMainMenu({ scene, onStart }) {
-
-  // MANAGER GUI 3D
+  // GUI 3D Manager
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
-  // PANEL 3D
   const panel = new BABYLON.GUI.StackPanel3D();
   manager.addControl(panel);
 
-  // Letakkan panel di depan kamera
+  // kamera sementara
+  let cam = new BABYLON.FreeCamera("menuCam", new BABYLON.Vector3(0, 1.6, -3), scene);
+  cam.setTarget(BABYLON.Vector3.Zero());
+  cam.attachControl(true);
+
   panel.position = new BABYLON.Vector3(0, 1.5, 2);
 
-  // BUTTON START
+  // button
   const startBtn = new BABYLON.GUI.HolographicButton("startBtn");
   startBtn.text = "Start";
   panel.addControl(startBtn);
@@ -24,5 +25,3 @@ export async function createMainMenu({ scene, onStart }) {
 
   return panel;
 }
-
-
