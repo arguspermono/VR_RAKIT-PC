@@ -41,7 +41,7 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
   const titleText = new BABYLON.GUI.TextBlock();
   titleText.text = "HARDWARE ASSEMBLY";
   titleText.color = "white";
-  titleText.fontSize = 90;
+  titleText.fontSize = 82;
 
   titleUI.addControl(titleText);
 
