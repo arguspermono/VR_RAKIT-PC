@@ -5,25 +5,16 @@ import {
   applyComponentScale,
 } from "./utils.js";
 import { detectSlots } from "./slots.js";
-import { setupColliders } from "./collisions.js";
+import { setupColliders } from "./collisions.js"; // <--- DITAMBAHKAN
 
 export async function createScene(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
   scene.collisionsEnabled = true;
 
-  // 1. AKTIFKAN FISIKA
-  const gravity = new BABYLON.Vector3(0, -9.81, 0);
-  try {
-    scene.enablePhysics(gravity, new BABYLON.CannonJSPlugin());
-  } catch (e) {
-    console.warn(
-      "Gagal mengaktifkan fisika (Cannon.js). Pastikan library sudah di-load.",
-      e
-    );
-  }
-
+  // -----------------------------------------------------------
   // CAMERA (FPS)
+  // -----------------------------------------------------------
   const camera = new BABYLON.UniversalCamera(
     "playerCam",
     new BABYLON.Vector3(0, 1.7, -2),
@@ -40,7 +31,9 @@ export async function createScene(engine, canvas) {
   // LIGHT
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
+  // -----------------------------------------------------------
   // LOAD ENVIRONMENT (computer_lab.glb)
+  // -----------------------------------------------------------
   const lab = await BABYLON.SceneLoader.ImportMeshAsync(
     "",
     "assets/",
@@ -48,30 +41,16 @@ export async function createScene(engine, canvas) {
     scene
   );
 
-  lab.meshes.forEach((m) => {
-    m.checkCollisions = true;
-
-    // TAMBAHKAN IMPOSTOR STATIS KE LINGKUNGAN
-    if (
-      m.name.toLowerCase().includes("floor") ||
-      m.name.toLowerCase().includes("table") ||
-      m.name.toLowerCase().includes("wall")
-    ) {
-      m.physicsImpostor = new BABYLON.PhysicsImpostor(
-        m,
-        BABYLON.PhysicsImpostor.BoxImpostor,
-        { mass: 0, friction: 0.7, restitution: 0.1 },
-        scene
-      );
-    }
-  });
+  lab.meshes.forEach((m) => (m.checkCollisions = true));
 
   const tableMesh =
     lab.meshes.find((m) => m.name.includes("LongTable")) || null;
 
   console.log("TABLE FOUND:", tableMesh?.name);
 
+  // -----------------------------------------------------------
   // LOAD ALL COMPONENTS
+  // -----------------------------------------------------------
   const assetList = [
     { key: "case", file: "pc_case.glb" },
     { key: "mobo", file: "motherboard.glb" },
@@ -102,28 +81,38 @@ export async function createScene(engine, canvas) {
 
       res.meshes.forEach((m) => {
         m.isPickable = true;
+        // m.checkCollisions = false; <--- DIHAPUS (Collider diaktifkan di setupColliders)
       });
     } catch (e) {
       console.warn(`Failed to load ${a.key}:`, e);
     }
   }
 
+  // -----------------------------------------------------------
   // SCALE COMPONENTS
+  // -----------------------------------------------------------
   applyComponentScale(loaded);
 
+  // -----------------------------------------------------------
   // AUTO PLACE ALL PARTS ON TABLE
+  // -----------------------------------------------------------
   autoPlacePartsOnTable(tableMesh, loaded);
 
+  // -----------------------------------------------------------
   // STORE INTO scene.__app FOR OTHER MODULES
+  // -----------------------------------------------------------
   scene.__app = {
-    camera: scene.activeCamera,
+    camera,
     table: tableMesh,
     loaded,
     slots: {}, // akan di-set segera setelah detectSlots dipanggil
     xr: null,
   };
 
+  // -----------------------------------------------------------
   // DETECT SLOTS (PANGGIL DI SINI setelah semua asset loaded)
+  // -----------------------------------------------------------
+  // detectSlots akan mencari di loaded.* serta fallback ke scene.meshes bila perlu
   try {
     scene.__app.slots = detectSlots(scene);
   } catch (e) {
@@ -131,53 +120,44 @@ export async function createScene(engine, canvas) {
     scene.__app.slots = {};
   }
 
-  // SETUP COLLIDERS (Sekarang akan setup Physics Impostors)
+  // -----------------------------------------------------------
+  // SETUP COLLIDERS for all components <--- DITAMBAHKAN
+  // -----------------------------------------------------------
   setupColliders(scene);
 
-  // --- KODE DEBUG DITAMBAHKAN ---
-  // Tampilkan wireframe Physics Impostor
-  const physicsViewer = new BABYLON.Debug.PhysicsViewer(scene);
-  Object.values(scene.__app.loaded).forEach((item) => {
-    if (item.root && item.root.physicsImpostor) {
-      physicsViewer.showImpostor(item.root.physicsImpostor);
-    }
-  });
-  // --------------------------------
-
-  // ENABLE WEBXR + LASER POINTER
+  // -----------------------------------------------------------
+  // ENABLE WEBXR + LASER POINTER (await supaya XR siap saat createScene selesai)
+  // -----------------------------------------------------------
   try {
     const xr = await scene.createDefaultXRExperienceAsync({
-      floorMeshes: scene.meshes.filter(
-        (m) => m.physicsImpostor && m.physicsImpostor.mass === 0
-      ),
+      floorMeshes: scene.meshes.filter((m) => m.checkCollisions),
     });
 
     console.log("✔ WebXR Ready");
 
-    // Perbaikan: Tambahkan Pengecekan 'if'
-    if (xr.featuresManager) {
-      try {
-        xr.featuresManager.enableFeature(
-          BABYLON.WebXRFeatureName.POINTER_SELECTION,
-          "stable",
-          {
-            enablePointerSelectionOnAllControllers: true,
-          }
-        );
-      } catch (e) {
-        console.warn(
-          "pointer selection enable failed (maybe already enabled):",
-          e
-        );
-      }
-    } else {
-      console.warn("XR FeaturesManager tidak tersedia.");
+    // Babylon v8: enable pointer selection feature via featuresManager,
+    // do NOT call enablePointerSelection() (deprecated).
+    try {
+      xr.featuresManager.enableFeature(
+        BABYLON.WebXRFeatureName.POINTER_SELECTION,
+        "stable",
+        {
+          enablePointerSelectionOnAllControllers: true,
+        }
+      );
+    } catch (e) {
+      // fallback: some distributions already expose pointerSelection
+      console.warn(
+        "pointer selection enable failed (maybe already enabled):",
+        e
+      );
     }
 
     xr.input.onControllerAddedObservable.add((controller) => {
       console.log("🕹 Controller detected:", controller.inputSource.handedness);
     });
 
+    // Simpan xr ke scene.__app (XR siap ketika createScene resolves)
     scene.__app.xr = xr;
   } catch (e) {
     console.warn("Failed to initialize XR:", e);
