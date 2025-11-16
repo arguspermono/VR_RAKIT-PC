@@ -1,14 +1,14 @@
-// interactions.js — FINAL STABLE VERSION
+// interactions.js — FINAL FIX (GPU offset + RAM upright + ignore slot rotation)
 // ===============================================================
 // Features:
 // ✔ Mouse drag snap
 // ✔ VR grab snap
 // ✔ Slot auto-detection
-// ✔ Auto-correct rotation for PSU/GPU/RAM
-// ✔ Ghost preview (translucent)
-// ✔ Highlight slot and main
-// ✔ Debug printer, no fatal errors
-// ✔ Safe color usage (no Color3.Orange())
+// ✔ Correct RAM/GPU orientation
+// ✔ GPU depth offset fix
+// ✔ Ghost preview
+// ✔ Highlight slot & item
+// ✔ Ignores wrong GLB slot rotations
 // ===============================================================
 
 // --------------------------- Utils ---------------------------
@@ -53,30 +53,27 @@ function getAbsPos(mesh) {
   }
 }
 
-function getAbsQuat(mesh) {
-  if (mesh.rotationQuaternion) return mesh.rotationQuaternion.clone();
-  return BABYLON.Quaternion.FromEulerVector(
-    mesh.rotation || BABYLON.Vector3.Zero()
+function quatCorrection(x, y, z) {
+  return BABYLON.Quaternion.FromEulerAngles(
+    BABYLON.Tools.ToRadians(x),
+    BABYLON.Tools.ToRadians(y),
+    BABYLON.Tools.ToRadians(z)
   );
 }
 
-function quatCorrection(degX, degY, degZ) {
-  const rad = new BABYLON.Vector3(
-    BABYLON.Tools.ToRadians(degX),
-    BABYLON.Tools.ToRadians(degY),
-    BABYLON.Tools.ToRadians(degZ)
-  );
-  return BABYLON.Quaternion.FromEulerVector(rad);
-}
-
-// Rotation auto-fix
+// --------------------------- Rotation Fix (Absolute Orientation) ---------------------------
+// GPU uses model's own rotation, RAM rotated upright
 const ROT_FIX = {
   psu: quatCorrection(0, 180, 0),
-  gpu: quatCorrection(0, 90, 0),
-  ram1: quatCorrection(0, 0, 0),
-  ram2: quatCorrection(0, 0, 0),
-  ram3: quatCorrection(0, 0, 0),
-  ram4: quatCorrection(0, 0, 0),
+
+  // GPU: identity → use model orientation (correct for your model)
+  gpu: quatCorrection(0, 0, 0),
+
+  // RAM: your model needs +90° Z to stand upright
+  ram1: quatCorrection(0, 0, 90),
+  ram2: quatCorrection(0, 0, 90),
+  ram3: quatCorrection(0, 0, 90),
+  ram4: quatCorrection(0, 0, 90),
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -110,7 +107,6 @@ function makeGhost(mainMesh, scene) {
 
 // --------------------------- Slot Lookup ---------------------------
 function getSlot(key, slots) {
-  if (!slots) return null;
   if (key === "mobo") return slots.mobo;
   if (key === "cpu") return slots.cpu;
   if (key.startsWith("ram")) return slots[key];
@@ -122,16 +118,25 @@ function getSlot(key, slots) {
   return null;
 }
 
-// --------------------------- SNAP SYSTEM (clone → replace) ---------------------------
+// --------------------------- SNAP SYSTEM ---------------------------
 function snapItem(item, slot, scene) {
   const root = item.root;
-  const slotMesh = slot.mesh;
 
-  const slotPos = getAbsPos(slotMesh);
-  const slotRot = getAbsQuat(slotMesh);
+  // Base position = slot position
+  let slotPos = getAbsPos(slot.mesh).clone();
 
-  const fix = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
-  const finalQuat = slotRot.multiply(fix);
+  // ---------------- GPU OFFSET FIX ----------------
+  if (item.key === "gpu") {
+    slotPos.z -= 0.025; // adjust deeper/outer. Increase if still inside.
+  }
+
+  // ---------------- RAM OFFSET FIX (thin clearance) --------------
+  if (item.key.startsWith("ram")) {
+    slotPos.z -= 0.01; // small pull outward
+  }
+
+  // Final rotation = ROT_FIX only (ignore slot mesh rotation)
+  const finalQuat = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
 
   const clone = root.clone(root.name + "_SNAPPED");
   clone.setAbsolutePosition(slotPos);
@@ -151,16 +156,15 @@ function snapItem(item, slot, scene) {
   }
 
   slot.used = true;
-  slotMesh.setEnabled(false);
-  slotMesh.isPickable = false;
+  slot.mesh.setEnabled(false);
+  slot.mesh.isPickable = false;
 
   return clone;
 }
 
 // --------------------------- Highlight Colors ---------------------------
 const COLOR_GREEN = BABYLON.Color3.Green();
-const COLOR_YELLOW = new BABYLON.Color3(1, 0.8, 0.2); // previously Orange() but manual
-const COLOR_BLUE = new BABYLON.Color3(0.3, 0.5, 1);
+const COLOR_YELLOW = new BABYLON.Color3(1, 0.8, 0.2);
 
 // --------------------------- attachInteractions ---------------------------
 export function attachInteractions(scene) {
@@ -179,13 +183,9 @@ export function attachInteractions(scene) {
 
     const item = loaded[key];
     const root = item.root;
-
     const main = getMainMesh(item);
     const slot = getSlot(key, slots);
-    if (!slot || !slot.mesh) {
-      warn("No slot for", key);
-      return;
-    }
+    if (!slot) return;
 
     const drag = new BABYLON.PointerDragBehavior({
       dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
@@ -202,7 +202,6 @@ export function attachInteractions(scene) {
         getAbsPos(main),
         getAbsPos(slot.mesh)
       );
-      debug(`DRAG ${key} dist=${dist.toFixed(3)}`);
 
       hl.removeAllMeshes();
 
@@ -215,9 +214,11 @@ export function attachInteractions(scene) {
         if (!ghost) ghost = makeGhost(main, scene);
         if (ghost) {
           ghost.setAbsolutePosition(getAbsPos(slot.mesh));
-          ghost.rotationQuaternion = getAbsQuat(slot.mesh).multiply(
-            ROT_FIX[key] || BABYLON.Quaternion.Identity()
-          );
+
+          // Ghost uses same orientation as final snap
+          ghost.rotationQuaternion =
+            ROT_FIX[key] || BABYLON.Quaternion.Identity();
+
           ghost.setEnabled(true);
         }
       } else {
@@ -230,23 +231,16 @@ export function attachInteractions(scene) {
       hl.removeAllMeshes();
       if (ghost) ghost.setEnabled(false);
 
-      if (!canSnap || slot.used) {
-        debug(`NOT SNAPPED: ${key}`);
-        return;
-      }
+      if (!canSnap || slot.used) return;
 
       const placed = snapItem(item, slot, scene);
-      debug(`SNAPPED: ${key} -> ${slot.mesh.name}`);
       hl.addMesh(placed, COLOR_GREEN);
       setTimeout(() => hl.removeAllMeshes(), 800);
     });
   });
 
   // -------------------- VR SYSTEM --------------------
-  if (!xr) {
-    warn("XR not initialized");
-    return;
-  }
+  if (!xr) return;
 
   xr.input.onControllerAddedObservable.add((controller) => {
     controller.onMotionControllerInitObservable.add((mc) => {
@@ -259,6 +253,7 @@ export function attachInteractions(scene) {
 
       function tryGrab() {
         if (grabbed) return;
+
         for (const key of Object.keys(loaded)) {
           if (key === "case") continue;
 
@@ -298,20 +293,12 @@ export function attachInteractions(scene) {
 
         if (dist < 0.22 && !slot.used) {
           const placed = snapItem(item, slot, scene);
-          debug(`VR SNAPPED: ${key}`);
-
           hl.addMesh(placed, COLOR_GREEN);
           setTimeout(() => hl.removeAllMeshes(), 800);
-        } else {
-          debug(`VR NOT SNAPPED: ${key}`);
         }
 
         if (ghost) ghost.setEnabled(false);
       }
-
-      controller.onDisposeObservable.add(() => {
-        if (ghost) ghost.dispose();
-      });
 
       [trigger, squeeze].forEach((btn) => {
         if (!btn) return;
@@ -324,7 +311,8 @@ export function attachInteractions(scene) {
       scene.onBeforeRenderObservable.add(() => {
         if (!grabbed) return;
 
-        const { key, item, main, slot } = grabbed;
+        const { key, main, slot } = grabbed;
+
         const dist = BABYLON.Vector3.Distance(
           getAbsPos(main),
           getAbsPos(slot.mesh)
@@ -334,9 +322,10 @@ export function attachInteractions(scene) {
           if (!ghost) ghost = makeGhost(main, scene);
           if (ghost) {
             ghost.setAbsolutePosition(getAbsPos(slot.mesh));
-            ghost.rotationQuaternion = getAbsQuat(slot.mesh).multiply(
-              ROT_FIX[key] || BABYLON.Quaternion.Identity()
-            );
+
+            ghost.rotationQuaternion =
+              ROT_FIX[key] || BABYLON.Quaternion.Identity();
+
             ghost.setEnabled(true);
           }
         } else {

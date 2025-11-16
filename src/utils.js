@@ -22,7 +22,6 @@ export function applyComponentScale(loaded) {
   if (loaded.hdd)
     loaded.hdd1.root.scaling = new BABYLON.Vector3(0.35, 0.35, 0.35);
 
-
   ["ram1", "ram2", "ram3", "ram4"].forEach((r) => {
     if (loaded[r]) loaded[r].root.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
   });
@@ -55,8 +54,6 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
     loaded.hdd2,
     loaded.ram1,
     loaded.ram2,
-    loaded.ram3,
-    loaded.ram4,
   ];
 
   order.forEach((item) => {

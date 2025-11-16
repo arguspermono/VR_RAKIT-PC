@@ -24,8 +24,6 @@ export function detectSlots(scene) {
     add("cooler", findMeshByName(m, "COOLER"));
     add("ram1", findMeshByName(m, "RAM1_P"));
     add("ram2", findMeshByName(m, "RAM2_P"));
-    add("ram3", findMeshByName(m, "RAM3_P"));
-    add("ram4", findMeshByName(m, "RAM4_P"));
     add("gpu_mobo", findMeshByName(m, "GPU_P"));
   }
 

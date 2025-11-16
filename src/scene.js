@@ -7,6 +7,7 @@ import { detectSlots } from "./slots.js";
 import { setupColliders } from "./collisions.js";
 
 export async function createScene(engine, canvas) {
+  
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
   scene.collisionsEnabled = true;
