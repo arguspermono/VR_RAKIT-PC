@@ -15,7 +15,7 @@ function attachInteractions({
   });
 
   drag.useObjectCenter = true;
-  processor.addBehavior(ddrag);
+  processor.addBehavior(drag);
 
   // Snap CPU ke socket
   drag.onDragEndObservable.add(() => {
