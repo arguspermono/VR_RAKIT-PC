@@ -51,11 +51,22 @@ menuScene.createDefaultXRExperienceAsync({
 }).then(menuXR => {
     xrHelper = menuXR;
 
-    createMainMenu({
+    const panel = createMainMenu({
         scene: menuScene,
         onStartPC: () => startGame(createScenePC),
         onStartLaptop: () => startGame(createSceneLaptop),
         onStartServer: () => startGame(createSceneServer)
+    });
+
+    // === Membuat panel selalu tepat di depan kamera ===
+    menuScene.onBeforeRenderObservable.add(() => {
+        const forward = menuCamera.getForwardRay().direction;
+
+        panel.position = menuCamera.position
+            .add(forward.scale(1.2))            // jarak 1.2 meter di depan kamera
+            .add(new BABYLON.Vector3(0, -0.2, 0)); // turun sedikit biar nyaman
+
+        panel.lookAt(menuCamera.position); // selalu facing ke user
     });
 });
 
