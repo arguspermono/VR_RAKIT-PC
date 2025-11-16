@@ -56,6 +56,7 @@ export async function createScene(engine, canvas) {
     { key: "ram2", file: "ram_2.glb" },
     { key: "ram3", file: "ram_3.glb" },
     { key: "ram4", file: "ram_4.glb" },
+    { key: "hdd1", file: "hardisk.glb" },
     { key: "psu", file: "PSU.glb" },
   ];
 

@@ -7,11 +7,21 @@ export function findMeshByName(meshes, name) {
 export function applyComponentScale(loaded) {
   if (loaded.cpu)
     loaded.cpu.root.scaling = new BABYLON.Vector3(0.18, 0.18, 0.18);
+
   if (loaded.gpu)
     loaded.gpu.root.scaling = new BABYLON.Vector3(0.45, 0.45, 0.45);
+
   if (loaded.mobo)
     loaded.mobo.root.scaling = new BABYLON.Vector3(0.4, 0.4, 0.4);
+
   if (loaded.psu) loaded.psu.root.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
+
+  if (loaded.cooler)
+    loaded.cooler.root.scaling = new BABYLON.Vector3(0.4, 0.4, 0.4);
+
+  if (loaded.hdd)
+    loaded.hdd1.root.scaling = new BABYLON.Vector3(0.35, 0.35, 0.35);
+
 
   ["ram1", "ram2", "ram3", "ram4"].forEach((r) => {
     if (loaded[r]) loaded[r].root.scaling = new BABYLON.Vector3(0.3, 0.3, 0.3);
@@ -29,7 +39,7 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
   const tableCenterZ = (bb.minimumWorld.z + bb.maximumWorld.z) / 2;
 
   const zOffset = -0.1;
-  const yOffset = 0.05;
+  const yOffset = 0.55; // lebih tinggi biar tidak tenggelam
 
   let startX = tableMesh.position.x + 0.8;
   const stepX = -0.55;
@@ -40,6 +50,9 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
     loaded.cpu,
     loaded.gpu,
     loaded.psu,
+    loaded.cooler,
+    loaded.hdd1,
+    loaded.hdd2,
     loaded.ram1,
     loaded.ram2,
     loaded.ram3,
