@@ -1,19 +1,15 @@
-async function createMainMenu({ scene, onStart }) {
+export function createMainMenu({ scene, xr, onStart }) {
 
-  // GUI 3D Manager
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
+  // PANEL UI 3D
   const panel = new BABYLON.GUI.StackPanel3D();
   manager.addControl(panel);
 
-  // kamera sementara
-  let cam = new BABYLON.FreeCamera("menuCam", new BABYLON.Vector3(0, 1.6, -3), scene);
-  cam.setTarget(BABYLON.Vector3.Zero());
-  cam.attachControl(true);
-
+  // Di depan kamera
   panel.position = new BABYLON.Vector3(0, 1.5, 2);
 
-  // button
+  // --- START BUTTON ---
   const startBtn = new BABYLON.GUI.HolographicButton("startBtn");
   startBtn.text = "Start";
   panel.addControl(startBtn);
@@ -21,6 +17,17 @@ async function createMainMenu({ scene, onStart }) {
   startBtn.onPointerUpObservable.add(() => {
     panel.dispose();
     if (onStart) onStart();
+  });
+
+  // --- VR BUTTON ---
+  const vrBtn = new BABYLON.GUI.HolographicButton("vrBtn");
+  vrBtn.text = "Enter VR";
+  panel.addControl(vrBtn);
+
+  vrBtn.onPointerUpObservable.add(() => {
+    if (xr) {
+      xr.baseExperience.enterXRAsync("immersive-vr");
+    }
   });
 
   return panel;
