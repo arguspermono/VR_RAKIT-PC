@@ -117,10 +117,7 @@ function createScene(engine, canvas) {
         }
 
         // Tambahkan XR helper (JANGAN pakai await)
-        return scene.createDefaultXRExperienceAsync({
-          uiOptions: { sessionMode: "immersive-vr" },
-          optionalFeatures: true
-        }).then(() => scene);
+        return scene
       });
     });
   });
