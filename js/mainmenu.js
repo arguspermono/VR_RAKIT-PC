@@ -5,82 +5,87 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
   // PANEL 3D UTAMA
   const panel = new BABYLON.GUI.StackPanel3D();
   panel.margin = 0.3;
-  panel.orientation = BABYLON.GUI.Container3D.VERTICAL;   // ⬅ vertikal
+
+  // WAJIB!!! → mode vertikal
+  panel.orientation = BABYLON.GUI.Container3D.VERTICAL;
+  
   manager.addControl(panel);
 
-  panel.position = new BABYLON.Vector3(0, 1.5, 2);
+  // POSISI PANEL → MENGHADAP KAMERA
+  panel.position = new BABYLON.Vector3(0, 1.4, 2);
+  panel.rotationQuaternion = BABYLON.Quaternion.Identity(); // hadap kamera
+
+  // Besarkan panel mesh (default terlalu kecil)
+  panel.scaling = new BABYLON.Vector3(1.2, 1.2, 1.2);
+
 
   // ============================
-  // GLASS BACKGROUND (lebih pekat)
+  // GLASS BACKGROUND
   // ============================
   const glass = BABYLON.MeshBuilder.CreatePlane("glassBg", { width: 2, height: 3 }, scene);
   const glassMat = new BABYLON.StandardMaterial("glassMat", scene);
 
   glassMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.alpha = 0.28;     // lebih pekat
+  glassMat.alpha = 0.25;
+  glassMat.backFaceCulling = false;
   glassMat.specularColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.environmentIntensity = 1.2;
   glassMat.emissiveColor = new BABYLON.Color3(1,1,1);
   glassMat.emissiveIntensity = 0.15;
-  glassMat.backFaceCulling = false;
-
   glass.material = glassMat;
+
+  // Tempel glass ke panel
   glass.parent = panel.mesh;
-  glass.position.z = -0.05;
+  glass.position.z = -0.1;
 
 
   // ============================
-  // TITLE
+  // TITLE (tidak gepeng)
   // ============================
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
     "titlePlane", { width: 1.6, height: 0.5 }, scene
   );
-
   titlePlane.parent = panel.mesh;
   titlePlane.position = new BABYLON.Vector3(0, 1.1, 0);
 
   const titleUI = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(titlePlane);
-
   const titleText = new BABYLON.GUI.TextBlock();
+
   titleText.text = "PC ASSEMBLY";
   titleText.color = "white";
   titleText.fontSize = 82;
-  titleText.fontStyle = "bold";
   titleUI.addControl(titleText);
 
 
   // ============================
-  // BUTTON FACTORY (anti gepeng)
+  // BUTTON FACTORY (fix hilang)
   // ============================
   function createGlassButton(text, callback) {
     const btn = new BABYLON.GUI.HolographicButton(text);
 
-    // button glass material
+    // BUTTON SCALE WAJIB (default sangat kecil!)
+    btn.scaling = new BABYLON.Vector3(0.8, 0.8, 0.8);
+
+    // KASIH Z-OFFSET → AGAR TIDAK MENYATU DENGAN GLASS (fix tombol hilang)
+    btn.position = new BABYLON.Vector3(0, 0, 0.1);
+
+    // Material kaca tombol
     const mat = new BABYLON.StandardMaterial("btnMat", scene);
     mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-    mat.alpha = 0.25;
-    mat.specularColor = new BABYLON.Color3(1, 1, 1);
-    mat.environmentIntensity = 1;
+    mat.alpha = 0.3;
     mat.backFaceCulling = false;
 
     btn.backMaterial = mat;
     btn.frontMaterial = mat;
 
-    // label text
     btn.text = text;
-
-    // scale supaya tidak gepeng
-    btn.scaling = new BABYLON.Vector3(1, 1, 1);
-    btn.mesh.scaling.y = 1.5;   // biar lebih “padat”
-    btn.mesh.scaling.x = 1.3;
-
     btn.onPointerUpObservable.add(callback);
+
     panel.addControl(btn);
 
     return btn;
   }
 
-  // BUTTON SET (vertikal)
+  // BUTTON ORDER – pasti vertikal
   createGlassButton("PC", onStartPC);
   createGlassButton("LAPTOP", onStartLaptop);
   createGlassButton("SERVER", onStartServer);
