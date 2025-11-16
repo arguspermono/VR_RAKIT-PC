@@ -108,17 +108,6 @@ async function createScene(engine, canvas) {
     camera.position.y = floorY + camera.ellipsoidOffset.y;
   }
 
-  // ===========================
-  // ===   XR DIBUAT DI SINI ===
-  // ===========================
-  const xr = await scene.createDefaultXRExperienceAsync({
-    uiOptions: { sessionMode: "immersive-vr" },
-    optionalFeatures: true
-  });
-
-  // Kirim XR balik ke main.js
-  scene.xrHelper = xr;
-
   return scene;
 }
 

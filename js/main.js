@@ -2,7 +2,7 @@ const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
 
 // =========================
-// === 1) BUAT MENU SCENE ===
+// === 1) MENU SCENE =======
 // =========================
 let menuScene = new BABYLON.Scene(engine);
 menuScene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
@@ -17,7 +17,7 @@ menuCamera.setTarget(BABYLON.Vector3.Zero());
 menuCamera.attachControl(canvas, true);
 
 // ================================
-// === 2) BUAT XR DI MENU SCENE ===
+// === 2) XR HANYA DIBUAT DI SINI ==
 // ================================
 let xrHelper = null;
 
@@ -26,34 +26,43 @@ menuScene.createDefaultXRExperienceAsync({
     optionalFeatures: true
 }).then(xr => {
     xrHelper = xr;
+
+    // Buat UI 3D setelah XR siap → aman
+    createMainMenu({
+        scene: menuScene,
+        xr: xrHelper,
+        onStart: startGame
+    });
 });
-
-// ==============================
-// === 3) BUAT MAIN MENU 3D UI ===
-// ==============================
-createMainMenu({
-    scene: menuScene,
-    xr: xrHelper,
-    onStart: async () => {
-        console.log("Start button pressed!");
-
-        const gameScene = await createScene(engine, canvas);
-
-        menuScene.dispose();
-        menuScene = null;
-
-        engine.runRenderLoop(() => gameScene.render());
-
-        if (xrHelper) {
-            xrHelper.baseExperience.enterXRAsync("immersive-vr");
-        }
-    }
-});
-
 
 // =============================
-// === 4) Render loop = Menu ===
+// === 3) Render Menu Loop =====
 // =============================
 engine.runRenderLoop(() => {
     if (menuScene) menuScene.render();
 });
+
+// ==============================
+// === 4) MULAI GAMEPLAY =========
+// ==============================
+async function startGame() {
+
+    console.log("Start button pressed!");
+
+    const gameScene = await createScene(engine, canvas);
+
+    // Hapus menu
+    menuScene.dispose();
+    menuScene = null;
+
+    // Pindahkan XR tanpa bikin baru
+    await xrHelper.baseExperience.enterXRAsync(
+        "immersive-vr",
+        "viewer", // paling aman
+        gameScene
+    );
+
+    engine.runRenderLoop(() => {
+        gameScene.render();
+    });
+}
