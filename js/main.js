@@ -26,16 +26,30 @@ menuScene.createDefaultXRExperienceAsync({
     optionalFeatures: true
 }).then(xr => {
     xrHelper = xr;
-
-    // ============================
-    // === 3) BUAT MAIN MENU UI ===
-    // ============================
-    createMainMenu({
-        scene: menuScene,
-        xr: xrHelper,
-        onStart: startGame
-    });
 });
+
+// ==============================
+// === 3) BUAT MAIN MENU 3D UI ===
+// ==============================
+createMainMenu({
+    scene: menuScene,
+    xr: xrHelper,
+    onStart: async () => {
+        console.log("Start button pressed!");
+
+        const gameScene = await createScene(engine, canvas);
+
+        menuScene.dispose();
+        menuScene = null;
+
+        engine.runRenderLoop(() => gameScene.render());
+
+        if (xrHelper) {
+            xrHelper.baseExperience.enterXRAsync("immersive-vr");
+        }
+    }
+});
+
 
 // =============================
 // === 4) Render loop = Menu ===
@@ -43,25 +57,3 @@ menuScene.createDefaultXRExperienceAsync({
 engine.runRenderLoop(() => {
     if (menuScene) menuScene.render();
 });
-
-
-// ==============================================
-// === 5) FUNGSI UNTUK MEMULAI GAMEPLAY SCENE ===
-// ==============================================
-async function startGame() {
-
-    console.log("Start button pressed!");
-
-    // Load gameplay scene
-    const gameScene = await createScene(engine, canvas);
-
-    // Dispose menu scene
-    menuScene.dispose();
-    menuScene = null;
-
-    // Pindahkan XR ke gameScene
-    await xrHelper.enterXRAsync("immersive-vr", "local-floor", gameScene);
-
-    // Render loop gameplay
-    engine.runRenderLoop(() => gameScene.render());
-}

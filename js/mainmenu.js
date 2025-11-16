@@ -1,5 +1,6 @@
 function createMainMenu({ scene, xr, onStart }) {
 
+  // MANAGER GUI 3D
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
   const panel = new BABYLON.GUI.StackPanel3D();
@@ -7,7 +8,7 @@ function createMainMenu({ scene, xr, onStart }) {
 
   panel.position = new BABYLON.Vector3(0, 1.5, 2);
 
-  // START BUTTON
+  // Button START
   const startBtn = new BABYLON.GUI.HolographicButton("startBtn");
   startBtn.text = "Start";
   panel.addControl(startBtn);
@@ -16,7 +17,7 @@ function createMainMenu({ scene, xr, onStart }) {
     if (onStart) onStart();
   });
 
-  // VR BUTTON
+  // Button VR
   const vrBtn = new BABYLON.GUI.HolographicButton("vrBtn");
   vrBtn.text = "Enter VR";
   panel.addControl(vrBtn);

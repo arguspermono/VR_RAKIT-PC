@@ -32,6 +32,9 @@ async function createScene(engine, canvas) {
 
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
+  // =============================
+  // ===   LOAD COMPUTER LAB   ===
+  // =============================
   const labResult = await BABYLON.SceneLoader.ImportMeshAsync(
     null, "assets/", "computer_lab.glb", scene
   );
@@ -118,3 +121,5 @@ async function createScene(engine, canvas) {
 
   return scene;
 }
+
+
