@@ -18,13 +18,6 @@ function createMainMenu({ scene, xr, onStart }) {
   });
 
   // Button VR
-  const vrBtn = new BABYLON.GUI.HolographicButton("vrBtn");
-  vrBtn.text = "Enter VR";
-  panel.addControl(vrBtn);
-
-  vrBtn.onPointerUpObservable.add(() => {
-    if (xr) xr.baseExperience.enterXRAsync("immersive-vr");
-  });
 
   return panel;
 }
