@@ -36,22 +36,20 @@ engine.runRenderLoop(() => {
 });
 
 // START GAME FUNCTION
-async function startGame(loadSceneFn) {
-
+async function startGame(createSceneFunction) {
     console.log("Start pressed!");
 
-    const gameScene = await loadSceneFn(engine, canvas);
+    const newScene = await createSceneFunction(engine, canvas);
 
+    // Hapus menu
     menuScene.dispose();
     menuScene = null;
 
-    await xrHelper.baseExperience.enterXRAsync(
-        "immersive-vr",
-        "viewer",
-        gameScene
-    );
-
-    engine.runRenderLoop(() => {
-        gameScene.render();
+    // Mulai XR di scene BARU
+    const xr = await newScene.createDefaultXRExperienceAsync({
+        uiOptions: { sessionMode: "immersive-vr" },
+        optionalFeatures: true
     });
+
+    engine.runRenderLoop(() => newScene.render());
 }

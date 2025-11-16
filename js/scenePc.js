@@ -111,4 +111,6 @@ async function createScenePC(engine, canvas) {
   return scene;
 }
 
+window.createScenePC = createScenePC;
+
 

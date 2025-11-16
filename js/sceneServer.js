@@ -111,4 +111,6 @@ async function createSceneServer(engine, canvas) {
   return scene;
 }
 
+window.createSceneServer = createSceneServer;
+
 

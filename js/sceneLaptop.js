@@ -111,4 +111,7 @@ async function createSceneLaptop(engine, canvas) {
   return scene;
 }
 
+window.createSceneLaptop = createSceneLaptop;
+
+
 
