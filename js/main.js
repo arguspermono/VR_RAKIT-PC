@@ -14,6 +14,32 @@ menuCamera.setTarget(BABYLON.Vector3.Zero());
 menuCamera.attachControl(canvas, true);
 
 // =============================
+// BLACK TRANSPARENT OVERLAY (Darkening Layer)
+// =============================
+const overlay = BABYLON.MeshBuilder.CreatePlane(
+    "blackOverlay",
+    { width: 5, height: 3 },
+    menuScene
+);
+
+overlay.position = new BABYLON.Vector3(0, 1.5, 1);  
+overlay.isPickable = false;
+
+// Material transparan
+const overlayMat = new BABYLON.StandardMaterial("overlayMat", menuScene);
+overlayMat.diffuseColor = new BABYLON.Color3(0, 0, 0); // hitam
+overlayMat.alpha = 0.45; // transparansi (0.0–1.0)
+overlay.material = overlayMat;
+
+// Always face camera
+menuScene.onBeforeRenderObservable.add(() => {
+    overlay.position = menuCamera.position
+        .add(menuCamera.getForwardRay().direction.scale(1.2));
+
+    overlay.lookAt(menuCamera.position);
+});
+
+// =============================
 // LOAD BACKGROUND GLB
 // =============================
 BABYLON.SceneLoader.Append(
