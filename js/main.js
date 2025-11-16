@@ -13,6 +13,35 @@ const menuCamera = new BABYLON.UniversalCamera(
 menuCamera.setTarget(BABYLON.Vector3.Zero());
 menuCamera.attachControl(canvas, true);
 
+// =============================
+// LOAD BACKGROUND GLB
+// =============================
+BABYLON.SceneLoader.Append(
+    "assets/", "computer_lab.glb",
+    menuScene,
+    (scene) => {
+        console.log("Computer Lab Loaded for Menu");
+
+        scene.meshes.forEach(mesh => {
+            mesh.isPickable = false;
+            mesh.checkCollisions = false;
+        });
+
+        const root = scene.meshes[0];
+        if (root) {
+            root.position = new BABYLON.Vector3(0, 0, 2);
+            root.scaling = new BABYLON.Vector3(1, 1, 1);
+        }
+
+        const light = new BABYLON.HemisphericLight(
+            "menuLight",
+            new BABYLON.Vector3(0, 1, 0),
+            menuScene
+        );
+        light.intensity = 1.2;
+    }
+);
+
 let xrHelper = null;
 
 // XR untuk MAIN MENU pakai "inline"
