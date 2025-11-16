@@ -5,18 +5,23 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
   // PANEL 3D UTAMA
   const panel = new BABYLON.GUI.StackPanel3D();
   panel.margin = 0.3;
+  panel.orientation = BABYLON.GUI.Container3D.VERTICAL;   // ⬅ vertikal
   manager.addControl(panel);
 
   panel.position = new BABYLON.Vector3(0, 1.5, 2);
 
-  // GLASS BACKGROUND
-  const glass = BABYLON.MeshBuilder.CreatePlane("glassBg", { width: 2, height: 2.8 }, scene);
+  // ============================
+  // GLASS BACKGROUND (lebih pekat)
+  // ============================
+  const glass = BABYLON.MeshBuilder.CreatePlane("glassBg", { width: 2, height: 3 }, scene);
   const glassMat = new BABYLON.StandardMaterial("glassMat", scene);
 
   glassMat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.alpha = 0.18;
+  glassMat.alpha = 0.28;     // lebih pekat
   glassMat.specularColor = new BABYLON.Color3(1, 1, 1);
-  glassMat.environmentIntensity = 0.8;
+  glassMat.environmentIntensity = 1.2;
+  glassMat.emissiveColor = new BABYLON.Color3(1,1,1);
+  glassMat.emissiveIntensity = 0.15;
   glassMat.backFaceCulling = false;
 
   glass.material = glassMat;
@@ -25,11 +30,12 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
 
 
   // ============================
-  // TITLE (Teknik Baru - AGAR WORK)
+  // TITLE
   // ============================
+  const titlePlane = BABYLON.MeshBuilder.CreatePlane(
+    "titlePlane", { width: 1.6, height: 0.5 }, scene
+  );
 
-  // Plane kecil untuk title
-  const titlePlane = BABYLON.MeshBuilder.CreatePlane("titlePlane", { width: 1.6, height: 0.4 }, scene);
   titlePlane.parent = panel.mesh;
   titlePlane.position = new BABYLON.Vector3(0, 1.1, 0);
 
@@ -44,22 +50,29 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
 
 
   // ============================
-  // GLASS BUTTON FACTORY
+  // BUTTON FACTORY (anti gepeng)
   // ============================
   function createGlassButton(text, callback) {
     const btn = new BABYLON.GUI.HolographicButton(text);
 
+    // button glass material
     const mat = new BABYLON.StandardMaterial("btnMat", scene);
     mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
     mat.alpha = 0.25;
     mat.specularColor = new BABYLON.Color3(1, 1, 1);
     mat.environmentIntensity = 1;
+    mat.backFaceCulling = false;
 
     btn.backMaterial = mat;
     btn.frontMaterial = mat;
 
+    // label text
     btn.text = text;
-    btn.scaling = new BABYLON.Vector3(1.2, 0.45, 1);
+
+    // scale supaya tidak gepeng
+    btn.scaling = new BABYLON.Vector3(1, 1, 1);
+    btn.mesh.scaling.y = 1.5;   // biar lebih “padat”
+    btn.mesh.scaling.x = 1.3;
 
     btn.onPointerUpObservable.add(callback);
     panel.addControl(btn);
@@ -67,7 +80,7 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
     return btn;
   }
 
-  // BUTTON SET
+  // BUTTON SET (vertikal)
   createGlassButton("PC", onStartPC);
   createGlassButton("LAPTOP", onStartLaptop);
   createGlassButton("SERVER", onStartServer);
