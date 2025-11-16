@@ -34,26 +34,22 @@ menuScene.createDefaultXRExperienceAsync({
 createMainMenu({
     scene: menuScene,
     xr: xrHelper,
-
     onStart: async () => {
         console.log("Start button pressed!");
 
-        // === Load gameplay scene ===
         const gameScene = await createScene(engine, canvas);
 
-        // Buang menu scene
         menuScene.dispose();
         menuScene = null;
 
-        // Render gameplay
         engine.runRenderLoop(() => gameScene.render());
 
-        // Kalau user sedang VR, masuk VR di gameplay juga
         if (xrHelper) {
             xrHelper.baseExperience.enterXRAsync("immersive-vr");
         }
     }
 });
+
 
 // =============================
 // === 4) Render loop = Menu ===
