@@ -40,7 +40,7 @@ export function autoPlacePartsOnTable(tableMesh, loaded) {
   const zOffset = -0.1;
   const yOffset = 0.25; // lebih tinggi biar tidak tenggelam
 
-  let startX = tableMesh.position.x + 0.8;
+  let startX = tableMesh.position.x + 2.0;
   const stepX = -0.55;
 
   const order = [
