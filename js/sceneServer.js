@@ -1,4 +1,4 @@
-async function createScene(engine, canvas) {
+async function createSceneServer(engine, canvas) {
 
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.85, 0.9, 1);

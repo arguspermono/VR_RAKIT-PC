@@ -1,9 +1,7 @@
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
 
-// ===============
-// MENU SCENE
-// ===============
+// MAIN MENU SCENE
 let menuScene = new BABYLON.Scene(engine);
 menuScene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
@@ -15,49 +13,45 @@ const menuCamera = new BABYLON.UniversalCamera(
 menuCamera.setTarget(BABYLON.Vector3.Zero());
 menuCamera.attachControl(canvas, true);
 
-// ===============
-// XR MENU
-// ===============
+let xrHelper = null;
+
+// XR untuk MAIN MENU pakai "inline"
 menuScene.createDefaultXRExperienceAsync({
-    uiOptions: { sessionMode: "inline" },   // PAKAI "inline" AGAR TIDAK CRASH
+    uiOptions: { sessionMode: "inline" },
     optionalFeatures: true
 }).then(menuXR => {
+    xrHelper = menuXR;
 
-    // setelah XR siap, buat UI menu
     createMainMenu({
         scene: menuScene,
-        onStart: startGame
+        onStartPC: () => startGame(createScenePC),
+        onStartLaptop: () => startGame(createSceneLaptop),
+        onStartServer: () => startGame(createSceneServer)
     });
-
 });
 
-// ===============
 // Render Menu
-// ===============
 engine.runRenderLoop(() => {
     if (menuScene) menuScene.render();
 });
 
-// ===============
-// START GAME
-// ===============
-async function startGame() {
+// START GAME FUNCTION
+async function startGame(loadSceneFn) {
 
     console.log("Start pressed!");
 
-    // load scene game
-    const gameScene = await createScene(engine, canvas);
+    const gameScene = await loadSceneFn(engine, canvas);
 
-    // hapus menu
     menuScene.dispose();
     menuScene = null;
 
-    // buat XR BARU untuk game
-    const gameXR = await gameScene.createDefaultXRExperienceAsync({
-        uiOptions: { sessionMode: "immersive-vr" }, 
-        optionalFeatures: true
-    });
+    await xrHelper.baseExperience.enterXRAsync(
+        "immersive-vr",
+        "viewer",
+        gameScene
+    );
 
-    // render game
-    engine.runRenderLoop(() => gameScene.render());
+    engine.runRenderLoop(() => {
+        gameScene.render();
+    });
 }
