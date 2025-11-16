@@ -58,15 +58,29 @@ menuScene.createDefaultXRExperienceAsync({
         onStartServer: () => startGame(createSceneServer)
     });
 
-    // === Membuat panel selalu tepat di depan kamera ===
+    // buat anchor (TransformNode) dan link panel ke anchor
+    const anchor = new BABYLON.TransformNode("menuAnchor", menuScene);
+    if (panel.linkToTransformNode) {
+        panel.linkToTransformNode(anchor);
+    } else if (panel.linkToTransformNode === undefined && panel.linkedTransformNode === undefined) {
+        // beberapa versi GUI pakai cara berbeda; linkToTransformNode biasanya ada
+        // tapi bila tidak, kita bisa set panel.position to anchor.position on update (fallback)
+    }
+
+    // update posisi/rotasi anchor setiap frame supaya panel selalu menghadap camera
     menuScene.onBeforeRenderObservable.add(() => {
+        // forward direction (unit vector)
         const forward = menuCamera.getForwardRay().direction;
 
-        panel.position = menuCamera.position
-            .add(forward.scale(1.2))            // jarak 1.2 meter di depan kamera
-            .add(new BABYLON.Vector3(0, -0.2, 0)); // turun sedikit biar nyaman
+        // target position: 1.2m di depan kamera, sedikit turun
+        const targetPos = menuCamera.position
+            .add(forward.scale(1.2))
+            .add(new BABYLON.Vector3(0, -0.2, 0));
 
-        panel.lookAt(menuCamera.position); // selalu facing ke user
+        anchor.position.copyFrom(targetPos);
+
+        // biar anchor menghadap kamera (transform node punya lookAt)
+        anchor.lookAt(menuCamera.position);
     });
 });
 
