@@ -39,9 +39,9 @@ function createMainMenu({ scene, onStartPC, onStartLaptop, onStartServer }) {
 
   const titleUI = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(titlePlane);
   const titleText = new BABYLON.GUI.TextBlock();
-  titleText.text = "PC ASSEMBLY";
+  titleText.text = "HARDWARE ASSEMBLY";
   titleText.color = "white";
-  titleText.fontSize = 82;
+  titleText.fontSize = 90;
 
   titleUI.addControl(titleText);
 
