@@ -13,16 +13,16 @@ export function detectSlots(scene) {
     const c = loaded.case.meshes;
     add("mobo", findMeshByName(c, "MB_P"));
     add("psu", findMeshByName(c, "PSU_P"));
-    add("hdd", findMeshByName(c, "HDD_P"));
-    add("fan1", findMeshByName(c, "FCS1"));
-    add("fan2", findMeshByName(c, "FCS2"));
-    add("fan3", findMeshByName(c, "FCS3"));
+    add("hdd1", findMeshByName(c, "HDD1_P"));
+    add("hdd2", findMeshByName(c, "HDD2_P"));
+    add("fan", findMeshByName(c, "FCS_P"));
   }
 
   // MOBO
   if (loaded.mobo) {
     const m = loaded.mobo.meshes;
     add("cpu", findMeshByName(m, "CPU_SOCKET"));
+    add("cooler", findMeshByName(m, "COOLER"));
     add("ram1", findMeshByName(m, "RAM1_P"));
     add("ram2", findMeshByName(m, "RAM2_P"));
     add("ram3", findMeshByName(m, "RAM3_P"));
