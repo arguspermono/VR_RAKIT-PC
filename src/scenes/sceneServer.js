@@ -17,21 +17,13 @@ export async function createSceneServer(engine, canvas) {
   // list of server/rack assets
   const assetList = [
     { key: "server_rack", file: "server_rack.glb" },
-    { key: "misc1", file: "misc1.glb" },
-    { key: "misc2", file: "misc2.glb" },
+
+    // hanya 5 item di meja
+    { key: "misc", file: "misc.glb" },
     { key: "nas", file: "nas.glb" },
     { key: "ups", file: "ups.glb" },
     { key: "console", file: "console.glb" },
-    // server units 1..9
-    { key: "server1", file: "server1.glb" },
-    { key: "server2", file: "server2.glb" },
-    { key: "server3", file: "server3.glb" },
-    { key: "server4", file: "server4.glb" },
-    { key: "server5", file: "server5.glb" },
-    { key: "server6", file: "server6.glb" },
-    { key: "server7", file: "server7.glb" },
-    { key: "server8", file: "server8.glb" },
-    { key: "server9", file: "server9.glb" },
+    { key: "server", file: "server.glb" },
   ];
 
   scene.__app.loaded = scene.__app.loaded || {};
@@ -85,22 +77,8 @@ export async function createSceneServer(engine, canvas) {
   }
 
   try {
-    const order = [
-      "misc1",
-      "misc2",
-      "nas",
-      "ups",
-      "console",
-      "server1",
-      "server2",
-      "server3",
-      "server4",
-      "server5",
-      "server6",
-      "server7",
-      "server8",
-      "server9",
-    ];
+    const order = ["misc", "nas", "ups", "console", "server"];
+
     scene.__tutorial = createTutorialManager(scene, order);
   } catch (e) {
     console.warn("createTutorialManager failed", e);

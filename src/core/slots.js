@@ -39,15 +39,11 @@ export function detectSlots(scene) {
   if (loaded.server_rack) {
     const r = loaded.server_rack.meshes;
     // misc slots
-    add("slot_misc1", findMeshByName(r, "SLOT_MISC1"));
-    add("slot_misc2", findMeshByName(r, "SLOT_MISC2"));
+    add("slot_misc", findMeshByName(r, "SLOT_MISC"));
     add("slot_nas", findMeshByName(r, "SLOT_NAS"));
     add("slot_ups", findMeshByName(r, "SLOT_UPS"));
     add("slot_console", findMeshByName(r, "SLOT_CONSOLE"));
-    // server unit slots (1..9)
-    for (let i = 1; i <= 9; i++) {
-      add(`slot_server${i}`, findMeshByName(r, `SLOT_SERVER${i}`));
-    }
+    add(`slot_server`, findMeshByName(r, `SLOT_SERVER`));
   }
 
   console.log("SLOTS DETECTED:", Object.keys(slots));

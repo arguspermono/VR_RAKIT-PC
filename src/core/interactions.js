@@ -111,9 +111,7 @@ function getSlot(key, slots) {
   if (key === "nas") return slots.slot_nas;
   if (key === "ups") return slots.slot_ups;
   if (key === "console") return slots.slot_console;
-  for (let i = 1; i <= 9; i++) {
-    if (key === `server${i}`) return slots[`slot_server${i}`];
-  }
+  if (key === `server`) return slots.slot_server;
 
   return null;
 }

@@ -82,7 +82,8 @@ export function placeServerRackAndItems(tableMesh, loaded) {
   }
 
   // small items on table
-  const items = ["misc1", "misc2", "nas", "ups", "console"];
+  const items = ["misc", "nas", "ups", "console", "server"];
+
   let startX = tableCenterX - 0.9;
   const stepX = 0.45;
 
