@@ -16,10 +16,10 @@ export function createMainMenu({
     "computer_lab.glb",
     scene,
     (meshes) => {
-      meshes.forEach((m) => {
-        m.scaling = new BABYLON.Vector3(1, 1, 1);
-        m.position = new BABYLON.Vector3(0, 0, 0);
-      });
+      // meshes.forEach((m) => {
+      //   m.scaling = new BABYLON.Vector3(1, 1, 1);
+      //   m.position = new BABYLON.Vector3(0, 0, 0);
+      // });
 
       // camera fix so menu is nicely framed
       const cam = scene.activeCamera;
