@@ -47,11 +47,8 @@ const tutorialData = {
   ],
 };
 
-// ====================================================================
-// FINAL: TUTORIAL 3D STATIC (DENGAN AUDIO & POSISI MUNDUR)
-// ====================================================================
 export function create3DDialog(scene, category) {
-  // 1. PENGAMAN GANDA (ANTI-MAIN MENU)
+  // 1. PENGAMAN GANDA
   if (!scene.__app) return;
   if (scene.activeCamera && scene.activeCamera.name !== "playerCam") return;
 
@@ -66,42 +63,29 @@ export function create3DDialog(scene, category) {
   const oldBox = scene.getMeshByName("tutorialBox");
   if (oldBox) oldBox.dispose();
 
-  // 3. BUAT BOX DISPLAY
-  const box = BABYLON.MeshBuilder.CreateBox(
+  // 3. BUAT PLANE (UI)
+  const box = BABYLON.MeshBuilder.CreatePlane(
     "tutorialBox",
     {
       width: 3.0,
       height: 1.8,
-      depth: 0.1,
+      sideOrientation: BABYLON.Mesh.DOUBLESIDE 
     },
     scene
   );
 
-  // --- VR COMPATIBILITY ---
   box.isPickable = true;
 
-  // 4. ATUR POSISI (Perbaikan agar tidak menutupi meja)
+  // 4. ATUR POSISI
   const charPos = targetMesh.getAbsolutePosition().clone();
   box.position = charPos;
+  box.position.y += 2.2; 
+  box.position.x += 2.8; 
+  box.position.z -= 0.2; 
 
-  // --- KOORDINAT BARU ---
-  // Y: Naikkan sedikit lagi biar aman dari monitor/objek tinggi
-  box.position.y += 2.3;
-
-  // X: Geser ke kanan (tetap di samping karakter)
-  box.position.x += 3.2;
-
-  // Z: MUNDURKAN ke arah tembok (bukan minus/maju ke kamera)
-  // Sebelumnya (-0.8) membuatnya maju mendekati mata pemain.
-  // Sekarang (+0.5) membuatnya mundur ke belakang badan karakter (seolah nempel di papan tulis).
-  box.position.z += 0.5;
-
-  // --- STATIC MODE ---
+  // Static Mode
   box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE;
-
-  // Matikan rendering group ID khusus agar box mematuhi depth buffer
-  // (Jadi kalau ada objek di depannya, box akan tertutup, bukan tembus pandang ke depan)
-  box.renderingGroupId = 0;
+  box.renderingGroupId = 0; 
 
   // 5. GUI TEXTURE
   const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(box);
@@ -116,12 +100,12 @@ export function create3DDialog(scene, category) {
   bg.cornerRadius = 30;
   advancedTexture.addControl(bg);
 
-  // Teks Tutorial
+  // Teks Setup
   const steps = tutorialData[category] || ["Tutorial data tidak ditemukan."];
   let stepIndex = 0;
 
   const textBlock = new BABYLON.GUI.TextBlock();
-  textBlock.text = steps[0];
+  textBlock.text = ""; // Kosongkan awal, nanti diisi efek typing
   textBlock.color = "white";
   textBlock.fontSize = 38;
   textBlock.textWrapping = true;
@@ -132,7 +116,44 @@ export function create3DDialog(scene, category) {
   textBlock.paddingBottom = "120px";
   bg.addControl(textBlock);
 
-  // --- TOMBOL KEMBALI (BACK) ---
+  // ============================================================
+  // ⌨️ EFEK TYPEWRITER (RUNNING TEXT)
+  // ============================================================
+  let typingInterval = null;
+
+  function typeText(fullText) {
+    // 1. Reset: Hentikan ketikan sebelumnya jika ada
+    if (typingInterval) clearInterval(typingInterval);
+    
+    // 2. Bersihkan teks saat ini
+    textBlock.text = ""; 
+    
+    let charIndex = 0;
+    
+    // 3. Mulai mengetik huruf demi huruf
+    typingInterval = setInterval(() => {
+        // Cek jika box sudah ditutup/didispose agar tidak error
+        if (box.isDisposed() || textBlock.isDisposed) {
+            clearInterval(typingInterval);
+            return;
+        }
+
+        // Tambahkan satu huruf
+        textBlock.text += fullText.charAt(charIndex);
+        charIndex++;
+
+        // Jika sudah selesai semua huruf, stop interval
+        if (charIndex >= fullText.length) {
+            clearInterval(typingInterval);
+        }
+    }, 20); // <-- Kecepatan ketik (makin kecil makin cepat, 20ms - 50ms ideal)
+  }
+  // ============================================================
+
+  // Jalankan teks pertama kali
+  typeText(steps[0]);
+
+  // --- TOMBOL KEMBALI ---
   const btnBack = BABYLON.GUI.Button.CreateSimpleButton("btnBack", "< KEMBALI");
   btnBack.width = "220px";
   btnBack.height = "70px";
@@ -148,7 +169,7 @@ export function create3DDialog(scene, category) {
   btnBack.isPointerBlocker = true;
   bg.addControl(btnBack);
 
-  // --- TOMBOL LANJUT (NEXT) ---
+  // --- TOMBOL LANJUT ---
   const btnNext = BABYLON.GUI.Button.CreateSimpleButton("btnNext", "LANJUT >");
   btnNext.width = "220px";
   btnNext.height = "70px";
@@ -164,11 +185,14 @@ export function create3DDialog(scene, category) {
   bg.addControl(btnNext);
 
   // --- LOGIKA TOMBOL ---
-
+  
   btnBack.onPointerClickObservable.add(() => {
     if (stepIndex > 0) {
       stepIndex--;
-      textBlock.text = steps[stepIndex];
+      
+      // Ganti text biasa menjadi typeText
+      typeText(steps[stepIndex]); 
+      
       playTalk();
       btnNext.isVisible = true;
       if (stepIndex === 0) btnBack.isVisible = false;
@@ -177,18 +201,26 @@ export function create3DDialog(scene, category) {
 
   btnNext.onPointerClickObservable.add(() => {
     stepIndex++;
+
     if (stepIndex < steps.length) {
-      textBlock.text = steps[stepIndex];
+      // Ganti text biasa menjadi typeText
+      typeText(steps[stepIndex]);
+      
       playTalk();
       btnBack.isVisible = true;
     } else {
-      textBlock.text = "Tutorial Selesai. Selamat bekerja!";
+      // Ganti text biasa menjadi typeText
+      typeText("Tutorial Selesai. Selamat bekerja!");
+      
       playCheer();
       btnNext.isVisible = false;
       btnBack.isVisible = false;
+      
       setTimeout(() => {
         box.dispose();
-      }, 2500);
+        // Hentikan typing jika box ditutup paksa oleh timeout
+        if (typingInterval) clearInterval(typingInterval);
+      }, 3500); // Waktu tutup diperlama sedikit biar teks selesai terbaca
     }
   });
 
