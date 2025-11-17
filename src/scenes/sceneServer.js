@@ -10,15 +10,19 @@ import {
   placeServerRackAndItems,
 } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
+// IMPORT BARU
+import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createSceneServer(engine, canvas) {
   const scene = await createSceneBase(engine, canvas);
 
+  // --- PANGGIL DIALOG TUTORIAL ---
+  create3DDialog(scene, "server");
+  // -------------------------------
+
   // list of server/rack assets
   const assetList = [
     { key: "server_rack", file: "server_rack.glb" },
-
-    // hanya 5 item di meja
     { key: "misc", file: "misc.glb" },
     { key: "nas", file: "nas.glb" },
     { key: "ups", file: "ups.glb" },
@@ -28,7 +32,7 @@ export async function createSceneServer(engine, canvas) {
 
   scene.__app.loaded = scene.__app.loaded || {};
 
-  // load assets sequentially (keeps code simple and predictable)
+  // load assets sequentially
   for (const a of assetList) {
     try {
       const res = await BABYLON.SceneLoader.ImportMeshAsync(
@@ -40,7 +44,7 @@ export async function createSceneServer(engine, canvas) {
       const root = res.meshes[0] || null;
       res.meshes.forEach((m) => (m.isPickable = true));
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
-      // lightweight physics impostor
+
       if (scene.getPhysicsEngine() && root) {
         try {
           root.physicsImpostor = new BABYLON.PhysicsImpostor(
@@ -59,14 +63,14 @@ export async function createSceneServer(engine, canvas) {
   // scale + place
   applyComponentScale(scene.__app.loaded);
 
-  // place rack and small items: rack in front of table (not blocking camera)
+  // place rack and small items
   placeServerRackAndItems(scene.__app.table, scene.__app.loaded);
 
-  // add generic table auto-placement fallback for any leftover
+  // fallback placement
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
-  // detect slots (for rack + others)
+  // detect slots
   scene.__app.slots = detectSlots(scene);
 
   // interactions + tutorial
@@ -78,13 +82,12 @@ export async function createSceneServer(engine, canvas) {
 
   try {
     const order = ["misc", "nas", "ups", "console", "server"];
-
     scene.__tutorial = createTutorialManager(scene, order);
   } catch (e) {
     console.warn("createTutorialManager failed", e);
   }
 
-  // HUD top-left
+  // HUD
   createHUD(
     scene,
     () => window.location.reload(),

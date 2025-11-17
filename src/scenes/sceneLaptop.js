@@ -6,9 +6,15 @@ import { createHUD } from "../ui/uiButtons.js";
 import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
+// IMPORT BARU
+import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createSceneLaptop(engine, canvas) {
   const scene = await createSceneBase(engine, canvas);
+
+  // --- PANGGIL DIALOG TUTORIAL ---
+  create3DDialog(scene, "laptop");
+  // -------------------------------
 
   // load laptop-specific assets
   const assetList = [

@@ -6,11 +6,18 @@ import { createHUD } from "../ui/uiButtons.js";
 import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
+// IMPORT BARU UNTUK DIALOG 3D
+import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createScenePC(engine, canvas) {
+  // 1. Load Base Scene (Meja & Lab sudah dimuat di sini)
   const scene = await createSceneBase(engine, canvas);
 
-  // load PC-specific assets
+  // --- 2. PANGGIL DIALOG TUTORIAL (DI MEJA) ---
+  create3DDialog(scene, "pc");
+  // --------------------------------------------
+
+  // 3. Load PC-specific assets
   const assetList = [
     { key: "case", file: "pc_case.glb" },
     { key: "mobo", file: "motherboard.glb" },
