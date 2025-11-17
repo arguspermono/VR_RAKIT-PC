@@ -48,94 +48,104 @@ const tutorialData = {
 };
 
 // ====================================================================
-// FINAL: TUTORIAL 3D STATIC (DENGAN AUDIO)
+// FINAL: TUTORIAL 3D STATIC (DENGAN AUDIO & FULL TEXT)
 // ====================================================================
 export function create3DDialog(scene, category) {
-  if (!scene) return;
+  // 1. PENGAMAN GANDA (ANTI-MAIN MENU)
+  if (!scene.__app) return;
+  if (scene.activeCamera && scene.activeCamera.name !== "playerCam") return;
+
+  // 2. CARI KARAKTER
+  let targetMesh = scene.getMeshByName("F_MED_Mechanical_Engineer.mo");
+  if (!targetMesh) {
+    targetMesh = scene.meshes.find((m) => m.name.includes("Engineer"));
+  }
+  if (!targetMesh) return;
 
   // Bersihkan dialog lama
   const oldBox = scene.getMeshByName("tutorialBox");
   if (oldBox) oldBox.dispose();
 
-  // ------------------------------------------------------------
-  // BOX STATIC
-  // ------------------------------------------------------------
+  // 3. BUAT BOX DISPLAY
   const box = BABYLON.MeshBuilder.CreateBox(
     "tutorialBox",
-    { width: 3.0, height: 1.6, depth: 0.1 },
+    {
+      width: 3.0, // Lebar agar muat teks panjang
+      height: 1.8, // Tinggi
+      depth: 0.1,
+    },
     scene
   );
 
-  box.position = new BABYLON.Vector3(2.0, 1.5, 3.0);
-  box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE;
+  // --- VR COMPATIBILITY ---
   box.isPickable = true;
-  box.renderingGroupId = 1;
 
-  // GUI
-  const adt = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(box);
+  // 4. ATUR POSISI (Mengikuti posisi karakter tapi DIAM)
+  const charPos = targetMesh.getAbsolutePosition().clone();
+  box.position = charPos;
 
+  box.position.y += 2.0;
+  box.position.x += 2.8; // Geser ke kanan karakter
+  box.position.z -= 0.8; // Maju sedikit dari tembok
+
+  // --- PERUBAHAN STATIC ---
+  // Mematikan mode billboard agar box TIDAK berputar mengikuti pemain
+  box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE;
+
+  // Mengunci rotasi agar menghadap lurus ke depan (ke arah kamera default)
+  // Jika teks terbalik/membelakangi, ubah Math.PI menjadi 0 atau sebaliknya
+  box.rotation = new BABYLON.Vector3(0, 0, 0);
+
+  box.renderingGroupId = 1; // Render di atas objek lain
+
+  // 5. GUI TEXTURE
+  const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(box);
+
+  // Background
   const bg = new BABYLON.GUI.Rectangle();
   bg.width = 1;
   bg.height = 1;
   bg.color = "#00ffff";
   bg.thickness = 4;
-  bg.background = "rgba(0, 0, 0, 0.85)";
-  bg.cornerRadius = 25;
-  adt.addControl(bg);
+  bg.background = "rgba(0, 0, 0, 0.9)";
+  bg.cornerRadius = 30;
+  advancedTexture.addControl(bg);
 
-  // ------------------------------------------------------------
-  // TEXT
-  // ------------------------------------------------------------
-  const steps = tutorialData[category] || ["Tutorial tidak ditemukan."];
+  // Teks Tutorial
+  const steps = tutorialData[category] || ["Tutorial data tidak ditemukan."];
   let stepIndex = 0;
 
   const textBlock = new BABYLON.GUI.TextBlock();
   textBlock.text = steps[0];
   textBlock.color = "white";
-  textBlock.fontSize = 42;
+  textBlock.fontSize = 38; // Ukuran font pas
   textBlock.textWrapping = true;
   textBlock.resizeToFit = true;
   textBlock.paddingTop = "30px";
   textBlock.paddingLeft = "30px";
   textBlock.paddingRight = "30px";
-  textBlock.paddingBottom = "100px";
+  textBlock.paddingBottom = "120px";
   bg.addControl(textBlock);
 
-  // ------------------------------------------------------------
-  // TOMBOL KEMBALI
-  // ------------------------------------------------------------
+  // --- TOMBOL KEMBALI (BACK) ---
   const btnBack = BABYLON.GUI.Button.CreateSimpleButton("btnBack", "< KEMBALI");
-  btnBack.width = "240px";
+  btnBack.width = "220px";
   btnBack.height = "70px";
   btnBack.color = "white";
-  btnBack.background = "#444";
+  btnBack.background = "#555";
   btnBack.cornerRadius = 20;
   btnBack.fontSize = 28;
   btnBack.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
   btnBack.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
   btnBack.paddingLeft = "30px";
-  btnBack.paddingBottom = "25px";
-  btnBack.isPointerBlocker = true;
-  btnBack.isVisible = false;
+  btnBack.paddingBottom = "30px";
+  btnBack.isVisible = false; // Awalnya sembunyi
+  btnBack.isPointerBlocker = true; // Wajib untuk VR
   bg.addControl(btnBack);
 
-  btnBack.onPointerClickObservable.add(() => {
-    if (stepIndex > 0) {
-      stepIndex--;
-      textBlock.text = steps[stepIndex];
-
-      // --- AUDIO: Talk Sound ---
-      playTalk();
-
-      if (stepIndex === 0) btnBack.isVisible = false;
-    }
-  });
-
-  // ------------------------------------------------------------
-  // TOMBOL LANJUT
-  // ------------------------------------------------------------
+  // --- TOMBOL LANJUT (NEXT) ---
   const btnNext = BABYLON.GUI.Button.CreateSimpleButton("btnNext", "LANJUT >");
-  btnNext.width = "240px";
+  btnNext.width = "220px";
   btnNext.height = "70px";
   btnNext.color = "white";
   btnNext.background = "#008888";
@@ -144,30 +154,49 @@ export function create3DDialog(scene, category) {
   btnNext.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
   btnNext.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
   btnNext.paddingRight = "30px";
-  btnNext.paddingBottom = "25px";
-  btnNext.isPointerBlocker = true;
+  btnNext.paddingBottom = "30px";
+  btnNext.isPointerBlocker = true; // Wajib untuk VR
   bg.addControl(btnNext);
 
+  // --- LOGIKA TOMBOL ---
+
+  // Logic Back
+  btnBack.onPointerClickObservable.add(() => {
+    if (stepIndex > 0) {
+      stepIndex--;
+      textBlock.text = steps[stepIndex];
+
+      playTalk(); // Audio Talk
+
+      btnNext.isVisible = true; // Munculkan tombol next jika mundur
+      if (stepIndex === 0) {
+        btnBack.isVisible = false; // Sembunyikan tombol back di halaman pertama
+      }
+    }
+  });
+
+  // Logic Next
   btnNext.onPointerClickObservable.add(() => {
     stepIndex++;
 
     if (stepIndex < steps.length) {
       textBlock.text = steps[stepIndex];
-      btnBack.isVisible = true;
 
-      // --- AUDIO: Talk Sound ---
-      playTalk();
+      playTalk(); // Audio Talk
+
+      btnBack.isVisible = true; // Selalu munculkan tombol back jika sudah maju
     } else {
-      textBlock.text = "Selesai.";
+      textBlock.text = "Tutorial Selesai. Selamat bekerja!";
+
+      playCheer(); // Audio Cheering (Selesai)
+
       btnNext.isVisible = false;
-      btnBack.isVisible = true;
+      btnBack.isVisible = false;
 
-      // --- AUDIO: Cheering Sound (Finished) ---
-      playCheer();
-
+      // Tutup box setelah 2.5 detik
       setTimeout(() => {
         box.dispose();
-      }, 1800);
+      }, 2500);
     }
   });
 
