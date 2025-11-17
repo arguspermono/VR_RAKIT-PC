@@ -1,5 +1,7 @@
 // src/ui/tutorial3D.js
 
+import { playTalk, playCheer } from "../audio/audioManager.js"; // <--- IMPORT AUDIO
+
 const tutorialData = {
   pc: [
     "Halo! Perkenalkan nama saya Machina, hari ini saya akan menjadi instruktur perakitan PC anda.",
@@ -46,7 +48,7 @@ const tutorialData = {
 };
 
 // ====================================================================
-// FINAL: TUTORIAL 3D STATIC (DENGAN TOMBOL KEMBALI)
+// FINAL: TUTORIAL 3D STATIC (DENGAN AUDIO)
 // ====================================================================
 export function create3DDialog(scene, category) {
   if (!scene) return;
@@ -65,7 +67,7 @@ export function create3DDialog(scene, category) {
   );
 
   box.position = new BABYLON.Vector3(2.0, 1.5, 3.0);
-  box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE; // TIDAK GOYANG
+  box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE;
   box.isPickable = true;
   box.renderingGroupId = 1;
 
@@ -114,7 +116,7 @@ export function create3DDialog(scene, category) {
   btnBack.paddingLeft = "30px";
   btnBack.paddingBottom = "25px";
   btnBack.isPointerBlocker = true;
-  btnBack.isVisible = false; // hanya muncul step > 0
+  btnBack.isVisible = false;
   bg.addControl(btnBack);
 
   btnBack.onPointerClickObservable.add(() => {
@@ -122,7 +124,9 @@ export function create3DDialog(scene, category) {
       stepIndex--;
       textBlock.text = steps[stepIndex];
 
-      // kalau sudah kembali ke step 0, sembunyikan tombol
+      // --- AUDIO: Talk Sound ---
+      playTalk();
+
       if (stepIndex === 0) btnBack.isVisible = false;
     }
   });
@@ -149,11 +153,17 @@ export function create3DDialog(scene, category) {
 
     if (stepIndex < steps.length) {
       textBlock.text = steps[stepIndex];
-      btnBack.isVisible = true; // aktifkan tombol kembali
+      btnBack.isVisible = true;
+
+      // --- AUDIO: Talk Sound ---
+      playTalk();
     } else {
       textBlock.text = "Selesai.";
       btnNext.isVisible = false;
       btnBack.isVisible = true;
+
+      // --- AUDIO: Cheering Sound (Finished) ---
+      playCheer();
 
       setTimeout(() => {
         box.dispose();

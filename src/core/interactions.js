@@ -1,6 +1,7 @@
-// interactions.js — FINAL MOBO FIX VERSION
+// src/core/interactions.js
 // ============================================================================
 // Features:
+// ✔ Audio Integration (Pick & Put)
 // ✔ GPU offset fix
 // ✔ RAM upright fix
 // ✔ CPU/GPU/RAM parented to MOBO
@@ -8,6 +9,8 @@
 // ✔ Ghost preview
 // ✔ VR + mouse drag working
 // ============================================================================
+
+import { playPick, playPut } from "../audio/audioManager.js"; // <--- IMPORT AUDIO
 
 // --------------------------- Utils ---------------------------
 
@@ -61,11 +64,11 @@ const ROT_FIX = {
   ram2_pc: quatCorrection(0, 0, 90),
   ram1_laptop: quatCorrection(0, 0, 0),
   ram2_laptop: quatCorrection(0, 0, 0),
-  console: quatCorrection(0,270, 0),
-  misc: quatCorrection(0,270, 0),
-  ups: quatCorrection(0,270, 0),
-  nas: quatCorrection(0,270, 0),
-  server: quatCorrection(0,270, 0),
+  console: quatCorrection(0, 270, 0),
+  misc: quatCorrection(0, 270, 0),
+  ups: quatCorrection(0, 270, 0),
+  nas: quatCorrection(0, 270, 0),
+  server: quatCorrection(0, 270, 0),
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -215,6 +218,11 @@ export function attachInteractions(scene) {
     let ghost = null;
     let canSnap = false;
 
+    // --- AUDIO: Play sound when dragging starts ---
+    drag.onDragStartObservable.add(() => {
+      if (!slot.used) playPick();
+    });
+
     drag.onDragObservable.add(() => {
       if (slot.used) return;
 
@@ -254,6 +262,10 @@ export function attachInteractions(scene) {
       if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
         const placed = snapItem(item, slot, scene);
         scene.__tutorial.onSnapped(item.key);
+
+        // --- AUDIO: Play sound when item snaps ---
+        playPut();
+
         hl.addMesh(placed, COLOR_GREEN);
         setTimeout(() => hl.removeAllMeshes(), 800);
       }
@@ -293,6 +305,9 @@ export function attachInteractions(scene) {
           if (dist < 0.22) {
             grabbed = { key, item, main, slot, root: item.root };
             item.root.setParent(hand);
+
+            // --- AUDIO: Pick Sound ---
+            playPick();
             return;
           }
         }
@@ -314,6 +329,10 @@ export function attachInteractions(scene) {
           if (scene.__tutorial.allowSnap(key)) {
             const placed = snapItem(item, slot, scene);
             scene.__tutorial.onSnapped(key);
+
+            // --- AUDIO: Put Sound ---
+            playPut();
+
             hl.addMesh(placed, COLOR_GREEN);
             setTimeout(() => hl.removeAllMeshes(), 800);
           }

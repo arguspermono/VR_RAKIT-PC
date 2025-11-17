@@ -1,10 +1,65 @@
 // src/ui/mainmenu.js
+
+// ============================================================
+// 🎵 AUDIO SYSTEM (DARI KODE B)
+// ============================================================
+let _audioInitialized = false;
+let _clickSfx = null;
+let _bgm = null;
+let _bgmStarted = false;
+
+function initMenuAudio() {
+  if (_audioInitialized) return;
+  _audioInitialized = true;
+
+  try {
+    _clickSfx = new Audio("./assets/audio/button-click-sfx.mp3");
+    _clickSfx.volume = 0.8;
+  } catch (e) {
+    console.warn("Failed to load click SFX", e);
+  }
+
+  try {
+    _bgm = new Audio("./assets/audio/bgm-ambience.mp3");
+    _bgm.loop = true;
+    _bgm.volume = 0.35;
+  } catch (e) {
+    console.warn("Failed to load BGM", e);
+  }
+}
+
+function playMenuClick() {
+  if (!_clickSfx) return;
+  try {
+    _clickSfx.currentTime = 0;
+    _clickSfx.play();
+  } catch (e) {
+    console.warn("Failed to play click SFX", e);
+  }
+}
+
+function startMenuBGM() {
+  if (!_bgm || _bgmStarted) return;
+  try {
+    _bgm.play();
+    _bgmStarted = true;
+  } catch (e) {
+    console.warn("Failed to play BGM", e);
+  }
+}
+
+// ============================================================
+// MAIN MENU (VISUAL DARI KODE A + AUDIO)
+// ============================================================
 export function createMainMenu({
   scene,
   onStartPC,
   onStartLaptop,
   onStartServer,
 }) {
+  // 1. Inisialisasi Audio saat menu dibuat
+  initMenuAudio();
+
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
   // ============================================================
@@ -21,7 +76,7 @@ export function createMainMenu({
         m.position = new BABYLON.Vector3(0, 0, 0);
       });
 
-      // camera fix so menu is nicely framed
+      // Camera setup dari Kode A
       const cam = scene.activeCamera;
       cam.position = new BABYLON.Vector3(0, 1.6, 1);
       cam.setTarget(new BABYLON.Vector3(0, 1.3, 2));
@@ -31,14 +86,14 @@ export function createMainMenu({
   );
 
   // ============================================================
-  // 3D MENU PANEL
+  // 3D MENU PANEL (Posisi dari Kode A)
   // ============================================================
   const panel = new BABYLON.GUI.StackPanel3D();
   manager.addControl(panel);
   panel.position = new BABYLON.Vector3(0, 1, 4);
 
   // ============================================================
-  // TITLE TEXT (Sudah Diperbaiki)
+  // TITLE TEXT (Tampilan Bagus dari Kode A)
   // ============================================================
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
     "titlePlane",
@@ -71,30 +126,54 @@ export function createMainMenu({
   titleTexture.addControl(titleText);
 
   // ============================================================
-  // BUTTONS
+  // BUTTONS (Logika Kode A + Sisipan Audio)
   // ============================================================
+
+  // Tombol PC
   const btnPC = new BABYLON.GUI.HolographicButton("startPC");
   btnPC.text = "Mulai Perakitan PC";
   panel.addControl(btnPC);
-  btnPC.onPointerUpObservable.add(() => onStartPC && onStartPC());
+  btnPC.onPointerUpObservable.add(() => {
+    playMenuClick(); // Audio
+    startMenuBGM(); // Audio
+    if (onStartPC) onStartPC();
+  });
 
+  // Tombol Laptop
   const btnLaptop = new BABYLON.GUI.HolographicButton("startLaptop");
   btnLaptop.text = "Mulai Perakitan Laptop";
   panel.addControl(btnLaptop);
-  btnLaptop.onPointerUpObservable.add(() => onStartLaptop && onStartLaptop());
+  btnLaptop.onPointerUpObservable.add(() => {
+    playMenuClick(); // Audio
+    startMenuBGM(); // Audio
+    if (onStartLaptop) onStartLaptop();
+  });
 
+  // Tombol Server
   const btnServer = new BABYLON.GUI.HolographicButton("startServer");
   btnServer.text = "Mulai Perakitan Server";
   panel.addControl(btnServer);
-  btnServer.onPointerUpObservable.add(() => onStartServer && onStartServer());
+  btnServer.onPointerUpObservable.add(() => {
+    playMenuClick(); // Audio
+    startMenuBGM(); // Audio
+    if (onStartServer) onStartServer();
+  });
 
   // ============================================================
-  // ENABLE VR LANGSUNG DI MAIN MENU
+  // ENABLE VR LANGSUNG DI MAIN MENU (Dari Kode A)
   // ============================================================
-  scene.createDefaultXRExperienceAsync({
-    floorMeshes: [],
-    disableTeleportation: true,
-  });
+  // Ini penting agar tombol kacamata VR muncul
+  try {
+    scene.createDefaultXRExperienceAsync({
+      floorMeshes: [],
+      disableTeleportation: true,
+      uiOptions: {
+        sessionMode: "immersive-vr",
+      },
+    });
+  } catch (e) {
+    console.warn("WebXR not supported here", e);
+  }
 
   return panel;
 }
