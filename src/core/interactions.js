@@ -1,13 +1,16 @@
-// interactions.js — FINAL MOBO FIX VERSION
+// src/core/interactions.js
 // ============================================================================
 // Features:
+// ✔ Audio Integration (Pick, Put, & Auto Cheer on Finish)
 // ✔ GPU offset fix
 // ✔ RAM upright fix
 // ✔ CPU/GPU/RAM parented to MOBO
-// ✔ Motherboard snap IGNORE slot rotation (no upside-down bug)
 // ✔ Ghost preview
 // ✔ VR + mouse drag working
 // ============================================================================
+
+// 1. TAMBAHKAN playCheer DI IMPORT
+import { playPick, playPut, playCheer } from "../audio/audioManager.js";
 
 // --------------------------- Utils ---------------------------
 
@@ -61,11 +64,11 @@ const ROT_FIX = {
   ram2_pc: quatCorrection(0, 0, 90),
   ram1_laptop: quatCorrection(0, 0, 0),
   ram2_laptop: quatCorrection(0, 0, 0),
-  console: quatCorrection(0,270, 0),
-  misc: quatCorrection(0,270, 0),
-  ups: quatCorrection(0,270, 0),
-  nas: quatCorrection(0,270, 0),
-  server: quatCorrection(0,270, 0),
+  console: quatCorrection(0, 270, 0),
+  misc: quatCorrection(0, 270, 0),
+  ups: quatCorrection(0, 270, 0),
+  nas: quatCorrection(0, 270, 0),
+  server: quatCorrection(0, 270, 0),
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -127,36 +130,23 @@ function snapItem(item, slot, scene) {
 
   let slotPos = getAbsPos(slot.mesh).clone();
 
-  // ------- GPU offset (forward) -------
   if (item.key === "gpu") slotPos.z -= 0.025;
-
-  // ------- RAM offset (small forward) -------
   if (item.key.startsWith("ram")) slotPos.z -= 0.03;
+  if (item.key === "mobo") slotPos.z -= 0.001;
 
-  // ------- MOBO offset if needed -------
-  if (item.key === "mobo") {
-    slotPos.z -= 0.001; // tweak if needed
-  }
-
-  // ------- ROTATION RULES -------
   let finalQuat;
-
   if (item.key === "mobo") {
-    // 🔥 Motherboard ALWAYS upright — ignore slot rotation
     finalQuat = ROT_FIX.mobo;
   } else {
-    // GPU / RAM / CPU use their fixed rotation
     finalQuat = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
   }
 
-  // Clone as final placed object
   const clone = root.clone(root.name + "_SNAPPED");
   clone.setAbsolutePosition(slotPos);
   clone.rotationQuaternion = finalQuat;
   clone.scaling.copyFrom(root.scaling);
   clone.isPickable = false;
 
-  // ----------------- Parenting system -----------------
   if (loaded.mobo) {
     if (
       item.key === "cpu" ||
@@ -164,11 +154,9 @@ function snapItem(item, slot, scene) {
       item.key.startsWith("ram")
     ) {
       clone.setParent(loaded.mobo.root);
-      debug("PARENT:", item.key, "→ MOBO");
     }
   }
 
-  // Remove old mesh
   root.setEnabled(false);
   if (root.physicsImpostor) {
     root.physicsImpostor.dispose();
@@ -182,7 +170,6 @@ function snapItem(item, slot, scene) {
   return clone;
 }
 
-// --------------------------- Colors ---------------------------
 const COLOR_GREEN = BABYLON.Color3.Green();
 const COLOR_YELLOW = new BABYLON.Color3(1, 0.8, 0.2);
 
@@ -194,6 +181,27 @@ export function attachInteractions(scene) {
   const xr = app.xr;
 
   const hl = new BABYLON.HighlightLayer("HL_INTERACT", scene);
+
+  // 2. FUNGSI CEK KELENGKAPAN (AUTO CHEER)
+  const checkAllDone = () => {
+    let allDone = true;
+    // Cek setiap item yang diload
+    for (const key of Object.keys(loaded)) {
+      if (key === "case") continue; // Abaikan casing
+
+      const slot = getSlot(key, slots);
+      // Jika item punya slot, tapi slotnya belum 'used', berarti belum selesai
+      if (slot && !slot.used) {
+        allDone = false;
+        break;
+      }
+    }
+
+    if (allDone) {
+      console.log("🎉 Perakitan Selesai! Memutar audio cheering...");
+      playCheer();
+    }
+  };
 
   // ===========================
   // MOUSE DRAG INTERACTION
@@ -215,22 +223,21 @@ export function attachInteractions(scene) {
     let ghost = null;
     let canSnap = false;
 
+    drag.onDragStartObservable.add(() => {
+      if (!slot.used) playPick();
+    });
+
     drag.onDragObservable.add(() => {
       if (slot.used) return;
-
       const dist = BABYLON.Vector3.Distance(
         getAbsPos(main),
         getAbsPos(slot.mesh)
       );
-
       hl.removeAllMeshes();
-
-      // 🔥 FIX: toleransi snap khusus untuk console
       const tolerance = item.key === "console" ? 0.55 : 0.25;
 
       if (dist < tolerance) {
         canSnap = true;
-
         hl.addMesh(main, COLOR_GREEN);
         hl.addMesh(slot.mesh, COLOR_YELLOW);
 
@@ -254,14 +261,20 @@ export function attachInteractions(scene) {
       if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
         const placed = snapItem(item, slot, scene);
         scene.__tutorial.onSnapped(item.key);
+
+        playPut(); // Bunyi 'Tak'
+
         hl.addMesh(placed, COLOR_GREEN);
         setTimeout(() => hl.removeAllMeshes(), 800);
+
+        // 3. CEK SELESAI SETELAH PASANG (MOUSE)
+        checkAllDone();
       }
     });
   });
 
   // ===================================================
-  // VR INTERACTION (unchanged, uses snapItem)
+  // VR INTERACTION
   // ===================================================
   if (!xr) return;
 
@@ -293,6 +306,7 @@ export function attachInteractions(scene) {
           if (dist < 0.22) {
             grabbed = { key, item, main, slot, root: item.root };
             item.root.setParent(hand);
+            playPick();
             return;
           }
         }
@@ -314,8 +328,14 @@ export function attachInteractions(scene) {
           if (scene.__tutorial.allowSnap(key)) {
             const placed = snapItem(item, slot, scene);
             scene.__tutorial.onSnapped(key);
+
+            playPut(); // Bunyi 'Tak'
+
             hl.addMesh(placed, COLOR_GREEN);
             setTimeout(() => hl.removeAllMeshes(), 800);
+
+            // 4. CEK SELESAI SETELAH PASANG (VR)
+            checkAllDone();
           }
         }
 
