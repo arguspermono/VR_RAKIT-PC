@@ -106,6 +106,14 @@ function getSlot(key, slots) {
   if (key === "psu") return slots.psu;
   if (key === "nvme_laptop") return slots.nvme_laptop;
   if (key === "battery_laptop") return slots.battery_laptop;
+  if (key === "misc1") return slots.slot_misc1;
+  if (key === "misc2") return slots.slot_misc2;
+  if (key === "nas") return slots.slot_nas;
+  if (key === "ups") return slots.slot_ups;
+  if (key === "console") return slots.slot_console;
+  for (let i = 1; i <= 9; i++) {
+    if (key === `server${i}`) return slots[`slot_server${i}`];
+  }
 
   return null;
 }
