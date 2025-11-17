@@ -16,10 +16,10 @@ export function createMainMenu({
     "computer_lab.glb",
     scene,
     (meshes) => {
-      // meshes.forEach((m) => {
-      //   m.scaling = new BABYLON.Vector3(1, 1, 1);
-      //   m.position = new BABYLON.Vector3(0, 0, 0);
-      // });
+      meshes.forEach((m) => {
+        m.scaling = new BABYLON.Vector3(1, 1, 1);
+        m.position = new BABYLON.Vector3(0, 0, 0);
+      });
 
       // camera fix so menu is nicely framed
       const cam = scene.activeCamera;
@@ -56,7 +56,8 @@ export function createMainMenu({
   );
 
   const titleText = new BABYLON.GUI.TextBlock();
-  titleText.text = "Selamat Datang di Simulasi Perakitan Komputer";
+  titleText.text =
+    "Selamat Datang di 'CraftLab', Dunia Simulasi Perakitan Komputer";
   titleText.color = "white";
   titleText.fontSize = 130;
   titleText.fontStyle = "bold";
