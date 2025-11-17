@@ -72,6 +72,8 @@ async function startScene(kind) {
     window.location.reload();
   }
 
+  engine.stopRenderLoop();
+
   engine.runRenderLoop(() => {
     if (currentScene) currentScene.render();
   });
@@ -113,6 +115,8 @@ function showMenu() {
     onStartLaptop: () => startScene("laptop"),
     onStartServer: () => startScene("server"),
   });
+
+  engine.stopRenderLoop();
 
   engine.runRenderLoop(() => {
     if (menuScene) menuScene.render();
