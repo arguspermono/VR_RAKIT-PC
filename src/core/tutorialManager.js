@@ -1,46 +1,43 @@
-// tutorialManager.js
-// Sistem tutorial urutan pemasangan + highlight + hint text
-
-export function createTutorialManager(scene) {
+// src/core/tutorialManager.js
+export function createTutorialManager(scene, customOrder) {
   const app = scene.__app;
   const loaded = app.loaded;
   const slots = app.slots;
 
-  // --------------------------
-  // STEP ORDER
-  // --------------------------
-  const ORDER = ["cpu", "ram1", "ram2", "gpu", "mobo", "psu", "hdd"];
+  const DEFAULT_ORDER = [
+    "cpu",
+    "ram1_pc",
+    "ram2_pc",
+    "gpu",
+    "mobo",
+    "psu",
+    "hdd",
+  ];
+  const ORDER =
+    Array.isArray(customOrder) && customOrder.length
+      ? customOrder.slice()
+      : DEFAULT_ORDER.slice();
 
   let stepIndex = 0;
-
-  // --------------------------
-  // HIGHLIGHT + HINTS
-  // --------------------------
-  const hl = new BABYLON.HighlightLayer("HL_TUTORIAL", scene);
-
-  const ui =
-    BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI_TUTORIAL");
+  const hl = new BABYLON.HighlightLayer("HL_TUTOR", scene);
+  const ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI_TUTOR");
 
   function makeHint(mesh, text) {
     const rect = new BABYLON.GUI.Rectangle();
-    rect.width = "160px";
-    rect.height = "40px";
+    rect.width = "180px";
+    rect.height = "44px";
     rect.cornerRadius = 12;
     rect.color = "white";
     rect.thickness = 2;
-    rect.background = "rgba(0,0,0,0.5)";
-
+    rect.background = "rgba(0,0,0,0.55)";
     const label = new BABYLON.GUI.TextBlock();
     label.text = text;
     label.color = "white";
-    label.fontSize = 16;
+    label.fontSize = 14;
     rect.addControl(label);
-
     ui.addControl(rect);
-
     rect.linkWithMesh(mesh);
     rect.linkOffsetY = -80;
-
     return rect;
   }
 
@@ -52,19 +49,13 @@ export function createTutorialManager(scene) {
       ui.removeControl(currentHint);
       currentHint = null;
     }
-
     const item = loaded[key];
     if (!item) return;
-
     const mesh = item.root;
     hl.addMesh(mesh, BABYLON.Color3.Yellow());
     currentHint = makeHint(mesh, `Ambil: ${key.toUpperCase()}`);
   }
 
-  // --------------------------
-  // VALIDASI SNAP
-  // Dipanggil dari interactions.js
-  // --------------------------
   function allowSnap(key) {
     const required = ORDER[stepIndex];
     return key === required;
@@ -73,39 +64,24 @@ export function createTutorialManager(scene) {
   function onSnapped(key) {
     const required = ORDER[stepIndex];
     if (key !== required) return;
-
     stepIndex++;
-
     hl.removeAllMeshes();
     if (currentHint) {
       ui.removeControl(currentHint);
       currentHint = null;
     }
-
-    // Next item
-    if (stepIndex < ORDER.length) {
-      highlight(ORDER[stepIndex]);
-    } else {
-      // DONE
+    if (stepIndex < ORDER.length) highlight(ORDER[stepIndex]);
+    else {
       const done = new BABYLON.GUI.TextBlock();
       done.text = "Perakitan Selesai!";
       done.color = "lime";
-      done.fontSize = 40;
+      done.fontSize = 36;
       ui.addControl(done);
     }
   }
 
-  // Start pertama
+  // start
   highlight(ORDER[0]);
 
-  return {
-    allowSnap,
-    onSnapped,
-  };
+  return { allowSnap, onSnapped };
 }
-
-export const tutorial = {
-  start() {
-    console.log("Tutorial start");
-  },
-};

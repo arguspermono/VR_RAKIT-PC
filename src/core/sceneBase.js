@@ -1,11 +1,6 @@
 // src/core/sceneBase.js
-// Base scene builder untuk semua mode (PC / Laptop / Server)
-
-import { applyComponentScale, autoPlacePartsOnTable } from "./utils.js";
-import { detectSlots } from "./slots.js";
 import { setupColliders } from "./collisions.js";
 import { setupControls } from "./controls.js";
-import { createTutorialManager } from "../core/tutorialManager.js";
 
 export async function createSceneBase(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
@@ -21,7 +16,6 @@ export async function createSceneBase(engine, canvas) {
   camera.attachControl(canvas, true);
   camera.speed = 0.12;
   camera.angularSensibility = 800;
-
   camera.checkCollisions = true;
   camera.applyGravity = true;
   camera.ellipsoid = new BABYLON.Vector3(0.3, 0.9, 0.3);
@@ -29,14 +23,18 @@ export async function createSceneBase(engine, canvas) {
 
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
-  // PHYSICS
+  // PHYSICS (optional if available)
   if (typeof Ammo === "function") {
-    await Ammo();
-    const plugin = new BABYLON.AmmoJSPlugin(true, Ammo);
-    scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), plugin);
+    try {
+      await Ammo();
+      const plugin = new BABYLON.AmmoJSPlugin(true, Ammo);
+      scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), plugin);
+    } catch (e) {
+      console.warn("Ammo init failed", e);
+    }
   }
 
-  // LOAD ENVIRONMENT
+  // LOAD ENVIRONMENT (lab + table)
   const lab = await BABYLON.SceneLoader.ImportMeshAsync(
     "",
     "assets/",
@@ -45,73 +43,28 @@ export async function createSceneBase(engine, canvas) {
   );
   lab.meshes.forEach((m) => (m.checkCollisions = true));
 
-  const tableMesh = lab.meshes.find((m) =>
-    m.name.toLowerCase().includes("table")
-  );
+  const tableMesh =
+    lab.meshes.find((m) => {
+      try {
+        return /table|meja|longtable/i.test(m.name);
+      } catch (e) {
+        return false;
+      }
+    }) || lab.meshes.find((m) => m.name.toLowerCase().includes("desk"));
 
-  // LOAD COMPONENTS
-  const assetList = [
-    { key: "case", file: "pc_case.glb" },
-    { key: "mobo", file: "motherboard.glb" },
-    { key: "cpu", file: "processor.glb" },
-    { key: "gpu", file: "GPU.glb" },
-    { key: "ram1", file: "ram_1.glb" },
-    { key: "ram2", file: "ram_2.glb" },
-    { key: "hdd", file: "hardisk.glb" },
-    { key: "psu", file: "PSU.glb" },
-  ];
-
-  const loaded = {};
-
-  for (const a of assetList) {
-    const res = await BABYLON.SceneLoader.ImportMeshAsync(
-      "",
-      "assets/",
-      a.file,
-      scene
-    );
-
-    const root = res.meshes[0];
-    res.meshes.forEach((m) => (m.isPickable = true));
-
-    loaded[a.key] = {
-      key: a.key,
-      root,
-      meshes: res.meshes,
-    };
-
-    if (scene.getPhysicsEngine()) {
-      const imp = new BABYLON.PhysicsImpostor(
-        root,
-        BABYLON.PhysicsImpostor.BoxImpostor,
-        { mass: a.key === "case" ? 0 : 1 },
-        scene
-      );
-      root.physicsImpostor = imp;
-    }
-  }
-
-  // SCALE + AUTO POSITION
-  applyComponentScale(loaded);
-  autoPlacePartsOnTable(tableMesh, loaded);
-
-  // STORE APP CONTEXT
+  // Basic app context (scenes will add their loaded parts)
   scene.__app = {
     camera,
-    table: tableMesh,
-    loaded,
+    table: tableMesh || null,
+    loaded: {}, // scene-specific loaders populate this
     slots: {},
     xr: null,
   };
 
-  // DETECT SLOTS
-  scene.__app.slots = detectSlots(scene);
-
-  // COLLIDERS
   setupColliders(scene);
   setupControls(scene);
 
-  // XR
+  // XR init (best-effort)
   try {
     const xr = await scene.createDefaultXRExperienceAsync({
       floorMeshes: scene.meshes.filter((m) => m.checkCollisions),

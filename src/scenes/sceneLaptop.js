@@ -4,17 +4,82 @@ import { attachInteractions } from "../core/interactions.js";
 import { createTutorialManager } from "../core/tutorialManager.js";
 import { createHUD } from "../ui/uiButtons.js";
 import { resetScene } from "../app.js";
+import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
+import { detectSlots } from "../core/slots.js";
 
 export async function createSceneLaptop(engine, canvas) {
   const scene = await createSceneBase(engine, canvas);
 
+  // load laptop-specific assets
+  const assetList = [
+    { key: "casing_laptop", file: "casing_laptop.glb" },
+    { key: "ram1_laptop", file: "ram1_lap.glb" },
+    { key: "ram2_laptop", file: "ram2_lap.glb" },
+    { key: "nvme_laptop", file: "nvme.glb" },
+    { key: "battery_laptop", file: "battery.glb" },
+  ];
+
+  scene.__app.loaded = scene.__app.loaded || {};
+
+  for (const a of assetList) {
+    try {
+      const res = await BABYLON.SceneLoader.ImportMeshAsync(
+        "",
+        "assets/",
+        a.file,
+        scene
+      );
+      const root = res.meshes[0];
+      res.meshes.forEach((m) => (m.isPickable = true));
+      scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
+      if (scene.getPhysicsEngine() && root) {
+        try {
+          root.physicsImpostor = new BABYLON.PhysicsImpostor(
+            root,
+            BABYLON.PhysicsImpostor.BoxImpostor,
+            { mass: a.key === "casing_laptop" ? 0 : 1 },
+            scene
+          );
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.warn("Failed to load", a.file, e);
+    }
+  }
+
+  applyComponentScale(scene.__app.loaded);
+  if (scene.__app.table)
+    autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
+
+  const casing = scene.__app.loaded["casing_laptop"];
+  if (casing && casing.root) {
+    casing.root.position.y = 0.5; // naikkan laptop
+    // casing.root.position.z = 0.5; // maju sedikit agar tidak nabrak meja
+  }
+
+  // detect slots (uses casing_laptop meshes)
+  scene.__app.slots = detectSlots(scene);
+
   try {
     attachInteractions(scene);
-  } catch (e) {}
-  try {
-    scene.__tutorial = createTutorialManager(scene);
-  } catch (e) {}
+  } catch (e) {
+    console.warn(e);
+  }
 
+  // laptop tutorial order (custom)
+  try {
+    const order = [
+      "ram1_laptop",
+      "ram2_laptop",
+      "nvme_laptop",
+      "battery_laptop",
+    ];
+    scene.__tutorial = createTutorialManager(scene, order);
+  } catch (e) {
+    console.warn("createTutorialManager failed", e);
+  }
+
+  // HUD
   createHUD(
     scene,
     () => window.location.reload(),

@@ -10,7 +10,6 @@
 // ============================================================================
 
 // --------------------------- Utils ---------------------------
-import { tutorial } from "./tutorialManager.js";
 
 function debug(...args) {
   try {
@@ -55,14 +54,13 @@ function quatCorrection(x, y, z) {
 
 // --------------------------- ROTATION FIX TABLE ---------------------------
 const ROT_FIX = {
-  mobo: quatCorrection(0, 180, 0), // 🔥 Motherboard always upright
-
+  mobo: quatCorrection(0, 180, 0),
   psu: quatCorrection(0, 180, 0),
-
-  gpu: quatCorrection(0, 0, 0), // GPU correct (from your screenshot)
-
-  ram1: quatCorrection(0, 0, 90),
-  ram2: quatCorrection(0, 0, 90),
+  gpu: quatCorrection(0, 0, 0),
+  ram1_pc: quatCorrection(0, 0, 90),
+  ram2_pc: quatCorrection(0, 0, 90),
+  ram1_laptop: quatCorrection(0, 0, 90),
+  ram2_laptop: quatCorrection(0, 0, 90),
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -95,12 +93,20 @@ function makeGhost(main, scene) {
 
 // --------------------------- Slot Lookup ---------------------------
 function getSlot(key, slots) {
+  if (!slots) return null;
+
   if (key === "mobo") return slots.mobo;
   if (key === "cpu") return slots.cpu;
   if (key === "hdd") return slots.hdd;
-  if (key.startsWith("ram")) return slots[key];
+  if (key === "ram1_pc") return slots.ram1_pc;
+  if (key === "ram2_pc") return slots.ram2_pc;
+  if (key === "ram1_laptop") return slots.ram1_laptop;
+  if (key === "ram2_laptop") return slots.ram2_laptop;
   if (key === "gpu") return slots.gpu_mobo || slots.gpu;
   if (key === "psu") return slots.psu;
+  if (key === "nvme_laptop") return slots.nvme_laptop;
+  if (key === "battery_laptop") return slots.battery_laptop;
+
   return null;
 }
 
