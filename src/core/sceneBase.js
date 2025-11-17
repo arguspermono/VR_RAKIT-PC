@@ -1,12 +1,13 @@
-import {
-  findMeshByName,
-  autoPlacePartsOnTable,
-  applyComponentScale,
-} from "./utils.js";
+// src/core/sceneBase.js
+// Base scene builder untuk semua mode (PC / Laptop / Server)
+
+import { applyComponentScale, autoPlacePartsOnTable } from "./utils.js";
 import { detectSlots } from "./slots.js";
 import { setupColliders } from "./collisions.js";
+import { setupControls } from "./controls.js";
+import { createTutorialManager } from "../core/tutorialManager.js";
 
-export async function createScene(engine, canvas) {
+export async function createSceneBase(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
   scene.collisionsEnabled = true;
@@ -20,6 +21,7 @@ export async function createScene(engine, canvas) {
   camera.attachControl(canvas, true);
   camera.speed = 0.12;
   camera.angularSensibility = 800;
+
   camera.checkCollisions = true;
   camera.applyGravity = true;
   camera.ellipsoid = new BABYLON.Vector3(0.3, 0.9, 0.3);
@@ -32,10 +34,9 @@ export async function createScene(engine, canvas) {
     await Ammo();
     const plugin = new BABYLON.AmmoJSPlugin(true, Ammo);
     scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), plugin);
-    console.log("✔ Ammo Physics Enabled");
   }
 
-  // LOAD ENV
+  // LOAD ENVIRONMENT
   const lab = await BABYLON.SceneLoader.ImportMeshAsync(
     "",
     "assets/",
@@ -44,7 +45,9 @@ export async function createScene(engine, canvas) {
   );
   lab.meshes.forEach((m) => (m.checkCollisions = true));
 
-  const tableMesh = lab.meshes.find((m) => m.name.includes("LongTable"));
+  const tableMesh = lab.meshes.find((m) =>
+    m.name.toLowerCase().includes("table")
+  );
 
   // LOAD COMPONENTS
   const assetList = [
@@ -77,7 +80,6 @@ export async function createScene(engine, canvas) {
       meshes: res.meshes,
     };
 
-    // basic impostor
     if (scene.getPhysicsEngine()) {
       const imp = new BABYLON.PhysicsImpostor(
         root,
@@ -89,9 +91,11 @@ export async function createScene(engine, canvas) {
     }
   }
 
+  // SCALE + AUTO POSITION
   applyComponentScale(loaded);
   autoPlacePartsOnTable(tableMesh, loaded);
 
+  // STORE APP CONTEXT
   scene.__app = {
     camera,
     table: tableMesh,
@@ -100,24 +104,21 @@ export async function createScene(engine, canvas) {
     xr: null,
   };
 
+  // DETECT SLOTS
   scene.__app.slots = detectSlots(scene);
+
+  // COLLIDERS
   setupColliders(scene);
+  setupControls(scene);
 
   // XR
   try {
     const xr = await scene.createDefaultXRExperienceAsync({
       floorMeshes: scene.meshes.filter((m) => m.checkCollisions),
     });
-
-    xr.featuresManager.enableFeature(
-      BABYLON.WebXRFeatureName.POINTER_SELECTION,
-      "stable",
-      { enablePointerSelectionOnAllControllers: true }
-    );
-
     scene.__app.xr = xr;
   } catch (e) {
-    console.warn("XR Init failed", e);
+    console.warn("XR init failed", e);
   }
 
   return scene;
