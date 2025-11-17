@@ -10,6 +10,8 @@
 // ============================================================================
 
 // --------------------------- Utils ---------------------------
+import { tutorial } from "./tutorialManager.js";
+
 function debug(...args) {
   try {
     console.log("[INTERACT]", ...args);
@@ -61,7 +63,6 @@ const ROT_FIX = {
 
   ram1: quatCorrection(0, 0, 90),
   ram2: quatCorrection(0, 0, 90),
-
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -231,8 +232,9 @@ export function attachInteractions(scene) {
       hl.removeAllMeshes();
       if (ghost) ghost.setEnabled(false);
 
-      if (canSnap && !slot.used) {
+      if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
         const placed = snapItem(item, slot, scene);
+        scene.__tutorial.onSnapped(item.key);
         hl.addMesh(placed, COLOR_GREEN);
         setTimeout(() => hl.removeAllMeshes(), 800);
       }
@@ -290,9 +292,12 @@ export function attachInteractions(scene) {
         );
 
         if (dist < 0.22 && !slot.used) {
-          const placed = snapItem(item, slot, scene);
-          hl.addMesh(placed, COLOR_GREEN);
-          setTimeout(() => hl.removeAllMeshes(), 800);
+          if (scene.__tutorial.allowSnap(key)) {
+            const placed = snapItem(item, slot, scene);
+            scene.__tutorial.onSnapped(key);
+            hl.addMesh(placed, COLOR_GREEN);
+            setTimeout(() => hl.removeAllMeshes(), 800);
+          }
         }
 
         if (ghost) ghost.setEnabled(false);
