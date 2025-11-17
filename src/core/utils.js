@@ -51,10 +51,8 @@ export function applyComponentScale(loaded) {
     if (loaded[k]) loaded[k].root.scaling = new BABYLON.Vector3(0.9, 0.9, 0.9);
   }
 
-  if (loaded.misc1)
-    loaded.misc1.root.scaling = new BABYLON.Vector3(0.45, 0.45, 0.45);
-  if (loaded.misc2)
-    loaded.misc2.root.scaling = new BABYLON.Vector3(0.45, 0.45, 0.45);
+  if (loaded.misc)
+    loaded.misc.root.scaling = new BABYLON.Vector3(0.45, 0.45, 0.45);
   if (loaded.nas) loaded.nas.root.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
   if (loaded.ups) loaded.ups.root.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
   if (loaded.console)

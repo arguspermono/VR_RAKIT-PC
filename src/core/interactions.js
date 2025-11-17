@@ -61,6 +61,11 @@ const ROT_FIX = {
   ram2_pc: quatCorrection(0, 0, 90),
   ram1_laptop: quatCorrection(0, 0, 0),
   ram2_laptop: quatCorrection(0, 0, 0),
+  console: quatCorrection(0,270, 0),
+  misc: quatCorrection(0,270, 0),
+  ups: quatCorrection(0,270, 0),
+  nas: quatCorrection(0,270, 0),
+  server: quatCorrection(0,270, 0),
 };
 
 // --------------------------- Ghost Material ---------------------------
@@ -106,8 +111,7 @@ function getSlot(key, slots) {
   if (key === "psu") return slots.psu;
   if (key === "nvme_laptop") return slots.nvme_laptop;
   if (key === "battery_laptop") return slots.battery_laptop;
-  if (key === "misc1") return slots.slot_misc1;
-  if (key === "misc2") return slots.slot_misc2;
+  if (key === "misc") return slots.slot_misc;
   if (key === "nas") return slots.slot_nas;
   if (key === "ups") return slots.slot_ups;
   if (key === "console") return slots.slot_console;
@@ -221,7 +225,10 @@ export function attachInteractions(scene) {
 
       hl.removeAllMeshes();
 
-      if (dist < 0.25) {
+      // 🔥 FIX: toleransi snap khusus untuk console
+      const tolerance = item.key === "console" ? 0.55 : 0.25;
+
+      if (dist < tolerance) {
         canSnap = true;
 
         hl.addMesh(main, COLOR_GREEN);
