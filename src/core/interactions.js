@@ -59,8 +59,8 @@ const ROT_FIX = {
   gpu: quatCorrection(0, 0, 0),
   ram1_pc: quatCorrection(0, 0, 90),
   ram2_pc: quatCorrection(0, 0, 90),
-  ram1_laptop: quatCorrection(0, 0, 90),
-  ram2_laptop: quatCorrection(0, 0, 90),
+  ram1_laptop: quatCorrection(0, 0, 0),
+  ram2_laptop: quatCorrection(0, 0, 0),
 };
 
 // --------------------------- Ghost Material ---------------------------

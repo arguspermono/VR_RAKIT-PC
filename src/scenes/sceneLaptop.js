@@ -54,7 +54,7 @@ export async function createSceneLaptop(engine, canvas) {
   const casing = scene.__app.loaded["casing_laptop"];
   if (casing && casing.root) {
     casing.root.position.y = 0.5; // naikkan laptop
-    // casing.root.position.z = 0.5; // maju sedikit agar tidak nabrak meja
+    casing.root.position.z -= 0.5; // maju sedikit agar tidak nabrak meja
   }
 
   // detect slots (uses casing_laptop meshes)
