@@ -1,46 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>PC Assembly VR</title>
-  <style>
-    html, body {
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-    }
-  </style>
-  <link rel="icon" href="data:,">
+    <title>PC Assembly Sim</title>
+    <style>
+        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; }
+        #renderCanvas { width: 100%; height: 100%; touch-action: none; }
+    </style>
 </head>
-
 <body>
+    <canvas id="renderCanvas"></canvas>
 
-  <canvas id="renderCanvas"></canvas>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
 
-  <!-- Babylon Core -->
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-
-  <!-- Babylon Loaders -->
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-
-  <!-- Babylon GUI (2D + 3D) -->
-  <script src="https://cdn.babylonjs.com/gui/babylon.gui.js"></script>
-
-  <!-- Your JS (non-module) -->
-  <script src="./js/mainmenu.js"></script>
-  <script src="./js/scenePc.js"></script>
-  <script src="./js/sceneLaptop.js"></script>
-  <script src="./js/sceneServer.js"></script>
-  <script src="./js/interactions.js"></script>
-  
-  <!-- Main JS (non-module) -->
-  <script src="./js/main.js"></script>
-
+    <script type="module" src="src/app.js"></script>
 </body>
 </html>
