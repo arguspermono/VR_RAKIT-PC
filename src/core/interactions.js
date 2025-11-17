@@ -1,5 +1,18 @@
 // src/core/interactions.js
-import { playPick, playPut } from "../audio/audioManager.js";
+// ============================================================================
+// Features:
+// ✔ Audio Integration (Pick, Put, & Auto Cheer on Finish)
+// ✔ GPU offset fix
+// ✔ RAM upright fix
+// ✔ CPU/GPU/RAM parented to MOBO
+// ✔ Ghost preview
+// ✔ VR + mouse drag working
+// ============================================================================
+
+// 1. TAMBAHKAN playCheer DI IMPORT
+import { playPick, playPut, playCheer } from "../audio/audioManager.js";
+
+// --------------------------- Utils ---------------------------
 
 function debug(...args) {
   try {
@@ -10,8 +23,9 @@ function debug(...args) {
 function getMainMesh(item) {
   if (!item) return null;
   if (!item.meshes || item.meshes.length === 0) return item.root || null;
-  let big = item.meshes[0],
-    max = 0;
+
+  let big = item.meshes[0];
+  let max = 0;
   for (const m of item.meshes) {
     try {
       const b = m.getBoundingInfo().boundingBox.extendSizeWorld;
@@ -41,6 +55,7 @@ function quatCorrection(x, y, z) {
   );
 }
 
+// --------------------------- ROTATION FIX TABLE ---------------------------
 const ROT_FIX = {
   mobo: quatCorrection(0, 180, 0),
   psu: quatCorrection(0, 180, 0),
@@ -56,9 +71,11 @@ const ROT_FIX = {
   server: quatCorrection(0, 270, 0),
 };
 
+// --------------------------- Ghost Material ---------------------------
 let _ghostMat = null;
 function ghostMaterial(scene) {
   if (_ghostMat) return _ghostMat;
+
   _ghostMat = new BABYLON.StandardMaterial("__ghost_mat__", scene);
   _ghostMat.alpha = 0.35;
   _ghostMat.emissiveColor = new BABYLON.Color3(0.5, 0.7, 1);
@@ -77,12 +94,15 @@ function makeGhost(main, scene) {
     g.renderingGroupId = 1;
     return g;
   } catch (e) {
+    debug("Ghost fail", e);
     return null;
   }
 }
 
+// --------------------------- Slot Lookup ---------------------------
 function getSlot(key, slots) {
   if (!slots) return null;
+
   if (key === "mobo") return slots.mobo;
   if (key === "cpu") return slots.cpu;
   if (key === "hdd") return slots.hdd;
@@ -99,20 +119,27 @@ function getSlot(key, slots) {
   if (key === "ups") return slots.slot_ups;
   if (key === "console") return slots.slot_console;
   if (key === `server`) return slots.slot_server;
+
   return null;
 }
 
+// --------------------------- SNAP FUNCTION ---------------------------
 function snapItem(item, slot, scene) {
   const root = item.root;
   const loaded = scene.__app.loaded;
+
   let slotPos = getAbsPos(slot.mesh).clone();
+
   if (item.key === "gpu") slotPos.z -= 0.025;
   if (item.key.startsWith("ram")) slotPos.z -= 0.03;
   if (item.key === "mobo") slotPos.z -= 0.001;
 
   let finalQuat;
-  if (item.key === "mobo") finalQuat = ROT_FIX.mobo;
-  else finalQuat = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
+  if (item.key === "mobo") {
+    finalQuat = ROT_FIX.mobo;
+  } else {
+    finalQuat = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
+  }
 
   const clone = root.clone(root.name + "_SNAPPED");
   clone.setAbsolutePosition(slotPos);
@@ -120,11 +147,14 @@ function snapItem(item, slot, scene) {
   clone.scaling.copyFrom(root.scaling);
   clone.isPickable = false;
 
-  if (
-    loaded.mobo &&
-    (item.key === "cpu" || item.key === "gpu" || item.key.startsWith("ram"))
-  ) {
-    clone.setParent(loaded.mobo.root);
+  if (loaded.mobo) {
+    if (
+      item.key === "cpu" ||
+      item.key === "gpu" ||
+      item.key.startsWith("ram")
+    ) {
+      clone.setParent(loaded.mobo.root);
+    }
   }
 
   root.setEnabled(false);
@@ -136,21 +166,49 @@ function snapItem(item, slot, scene) {
   slot.used = true;
   slot.mesh.setEnabled(false);
   slot.mesh.isPickable = false;
+
   return clone;
 }
 
 const COLOR_GREEN = BABYLON.Color3.Green();
 const COLOR_YELLOW = new BABYLON.Color3(1, 0.8, 0.2);
 
+// --------------------------- attachInteractions ---------------------------
 export function attachInteractions(scene) {
   const app = scene.__app;
   const loaded = app.loaded;
   const slots = app.slots;
   const xr = app.xr;
+
   const hl = new BABYLON.HighlightLayer("HL_INTERACT", scene);
 
+  // 2. FUNGSI CEK KELENGKAPAN (AUTO CHEER)
+  const checkAllDone = () => {
+    let allDone = true;
+    // Cek setiap item yang diload
+    for (const key of Object.keys(loaded)) {
+      if (key === "case") continue; // Abaikan casing
+
+      const slot = getSlot(key, slots);
+      // Jika item punya slot, tapi slotnya belum 'used', berarti belum selesai
+      if (slot && !slot.used) {
+        allDone = false;
+        break;
+      }
+    }
+
+    if (allDone) {
+      console.log("🎉 Perakitan Selesai! Memutar audio cheering...");
+      playCheer();
+    }
+  };
+
+  // ===========================
+  // MOUSE DRAG INTERACTION
+  // ===========================
   Object.keys(loaded).forEach((key) => {
     if (key === "case") return;
+
     const item = loaded[key];
     const root = item.root;
     const main = getMainMesh(item);
@@ -161,10 +219,10 @@ export function attachInteractions(scene) {
       dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
     });
     root.addBehavior(drag);
+
     let ghost = null;
     let canSnap = false;
 
-    // --- AUDIO PICK ---
     drag.onDragStartObservable.add(() => {
       if (!slot.used) playPick();
     });
@@ -182,6 +240,7 @@ export function attachInteractions(scene) {
         canSnap = true;
         hl.addMesh(main, COLOR_GREEN);
         hl.addMesh(slot.mesh, COLOR_YELLOW);
+
         if (!ghost) ghost = makeGhost(main, scene);
         if (ghost) {
           ghost.setAbsolutePosition(getAbsPos(slot.mesh));
@@ -198,17 +257,25 @@ export function attachInteractions(scene) {
     drag.onDragEndObservable.add(() => {
       hl.removeAllMeshes();
       if (ghost) ghost.setEnabled(false);
+
       if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
         const placed = snapItem(item, slot, scene);
         scene.__tutorial.onSnapped(item.key);
-        // --- AUDIO PUT ---
-        playPut();
+
+        playPut(); // Bunyi 'Tak'
+
         hl.addMesh(placed, COLOR_GREEN);
         setTimeout(() => hl.removeAllMeshes(), 800);
+
+        // 3. CEK SELESAI SETELAH PASANG (MOUSE)
+        checkAllDone();
       }
     });
   });
 
+  // ===================================================
+  // VR INTERACTION
+  // ===================================================
   if (!xr) return;
 
   xr.input.onControllerAddedObservable.add((controller) => {
@@ -216,17 +283,21 @@ export function attachInteractions(scene) {
       const trigger = mc.getComponent("trigger");
       const squeeze = mc.getComponent("squeeze");
       const hand = controller.grip || controller.pointer;
+
       let grabbed = null;
       let ghost = null;
 
       function tryGrab() {
         if (grabbed) return;
+
         for (const key of Object.keys(loaded)) {
           if (key === "case") continue;
+
           const item = loaded[key];
           const main = getMainMesh(item);
           const slot = getSlot(key, slots);
           if (!slot || slot.used) continue;
+
           const dist = BABYLON.Vector3.Distance(
             getAbsPos(main),
             hand.getAbsolutePosition()
@@ -235,7 +306,6 @@ export function attachInteractions(scene) {
           if (dist < 0.22) {
             grabbed = { key, item, main, slot, root: item.root };
             item.root.setParent(hand);
-            // --- AUDIO PICK VR ---
             playPick();
             return;
           }
@@ -246,21 +316,29 @@ export function attachInteractions(scene) {
         if (!grabbed) return;
         const { key, item, main, slot, root } = grabbed;
         grabbed = null;
+
         root.setParent(null);
+
         const dist = BABYLON.Vector3.Distance(
           getAbsPos(main),
           getAbsPos(slot.mesh)
         );
+
         if (dist < 0.22 && !slot.used) {
           if (scene.__tutorial.allowSnap(key)) {
             const placed = snapItem(item, slot, scene);
             scene.__tutorial.onSnapped(key);
-            // --- AUDIO PUT VR ---
-            playPut();
+
+            playPut(); // Bunyi 'Tak'
+
             hl.addMesh(placed, COLOR_GREEN);
             setTimeout(() => hl.removeAllMeshes(), 800);
+
+            // 4. CEK SELESAI SETELAH PASANG (VR)
+            checkAllDone();
           }
         }
+
         if (ghost) ghost.setEnabled(false);
       }
 
