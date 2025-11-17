@@ -1,4 +1,4 @@
-// src/core/slots.js
+// src/core/slots.js (only detectSlots function shown)
 import { findMeshByName } from "./utils.js";
 
 export function detectSlots(scene) {
@@ -9,7 +9,7 @@ export function detectSlots(scene) {
     if (mesh) slots[name] = { mesh, used: false };
   }
 
-  // CASE (PC)
+  // PC / mobo slots (kept existing logic)
   if (loaded.case) {
     const c = loaded.case.meshes;
     add("mobo", findMeshByName(c, "MB_P"));
@@ -17,7 +17,6 @@ export function detectSlots(scene) {
     add("hdd", findMeshByName(c, "HDD_P"));
   }
 
-  // MOBO (PC)
   if (loaded.mobo) {
     const m = loaded.mobo.meshes;
     add("cpu", findMeshByName(m, "CPU_SOCKET"));
@@ -27,7 +26,7 @@ export function detectSlots(scene) {
     add("gpu_mobo", findMeshByName(m, "GPU_P"));
   }
 
-  // LAPTOP casing slots (explicit)
+  // Laptop casing slots (explicit keys)
   if (loaded.casing_laptop) {
     const c = loaded.casing_laptop.meshes;
     add("ram1_laptop", findMeshByName(c, "SLOT_RAM1"));
@@ -36,6 +35,17 @@ export function detectSlots(scene) {
     add("battery_laptop", findMeshByName(c, "SLOT_BATTERY"));
   }
 
-  console.log("SLOTS:", slots);
+  // --- SERVER RACK SLOTS ---
+  if (loaded.server_rack) {
+    const r = loaded.server_rack.meshes;
+    // misc slots
+    add("slot_misc", findMeshByName(r, "SLOT_MISC"));
+    add("slot_nas", findMeshByName(r, "SLOT_NAS"));
+    add("slot_ups", findMeshByName(r, "SLOT_UPS"));
+    add("slot_console", findMeshByName(r, "SLOT_CONSOLE"));
+    add(`slot_server`, findMeshByName(r, `SLOT_SERVER`));
+  }
+
+  console.log("SLOTS DETECTED:", Object.keys(slots));
   return slots;
 }

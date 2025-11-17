@@ -20,7 +20,7 @@ export async function resetScene() {
     } catch (e) {
       console.warn(e);
     }
-    currentScene = null;
+    currentScene = null; 
   }
 
   // 2. Load ulang scene berdasarkan jenisnya
@@ -69,7 +69,8 @@ async function startScene(kind) {
     }
   } catch (e) {
     console.error("Scene load failed:", e);
-    window.location.reload();
+    // window.location.reload();
+    throw e;
   }
 
   engine.stopRenderLoop();
