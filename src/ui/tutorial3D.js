@@ -1,6 +1,6 @@
 // src/ui/tutorial3D.js
 
-import { playTalk, playCheer } from "../audio/audioManager.js"; // <--- IMPORT AUDIO
+import { playTalk, playCheer } from "../audio/audioManager.js";
 
 const tutorialData = {
   pc: [
@@ -47,11 +47,8 @@ const tutorialData = {
   ],
 };
 
-// ====================================================================
-// FINAL: TUTORIAL 3D STATIC (DENGAN AUDIO & FULL TEXT)
-// ====================================================================
 export function create3DDialog(scene, category) {
-  // 1. PENGAMAN GANDA (ANTI-MAIN MENU)
+  // 1. PENGAMAN GANDA
   if (!scene.__app) return;
   if (scene.activeCamera && scene.activeCamera.name !== "playerCam") return;
 
@@ -66,37 +63,29 @@ export function create3DDialog(scene, category) {
   const oldBox = scene.getMeshByName("tutorialBox");
   if (oldBox) oldBox.dispose();
 
-  // 3. BUAT BOX DISPLAY
-  const box = BABYLON.MeshBuilder.CreateBox(
+  // 3. BUAT PLANE (UI)
+  const box = BABYLON.MeshBuilder.CreatePlane(
     "tutorialBox",
     {
-      width: 3.0, // Lebar agar muat teks panjang
-      height: 1.8, // Tinggi
-      depth: 0.1,
+      width: 3.0,
+      height: 1.8,
+      sideOrientation: BABYLON.Mesh.DOUBLESIDE 
     },
     scene
   );
 
-  // --- VR COMPATIBILITY ---
   box.isPickable = true;
 
-  // 4. ATUR POSISI (Mengikuti posisi karakter tapi DIAM)
+  // 4. ATUR POSISI
   const charPos = targetMesh.getAbsolutePosition().clone();
   box.position = charPos;
+  box.position.y += 2.2; 
+  box.position.x += 2.8; 
+  box.position.z -= 0.2; 
 
-  box.position.y += 2.0;
-  box.position.x += 2.8; // Geser ke kanan karakter
-  box.position.z -= 0.8; // Maju sedikit dari tembok
-
-  // --- PERUBAHAN STATIC ---
-  // Mematikan mode billboard agar box TIDAK berputar mengikuti pemain
+  // Static Mode
   box.billboardMode = BABYLON.Mesh.BILLBOARDMODE_NONE;
-
-  // Mengunci rotasi agar menghadap lurus ke depan (ke arah kamera default)
-  // Jika teks terbalik/membelakangi, ubah Math.PI menjadi 0 atau sebaliknya
-  box.rotation = new BABYLON.Vector3(0, 0, 0);
-
-  box.renderingGroupId = 1; // Render di atas objek lain
+  box.renderingGroupId = 0; 
 
   // 5. GUI TEXTURE
   const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(box);
@@ -111,14 +100,14 @@ export function create3DDialog(scene, category) {
   bg.cornerRadius = 30;
   advancedTexture.addControl(bg);
 
-  // Teks Tutorial
+  // Teks Setup
   const steps = tutorialData[category] || ["Tutorial data tidak ditemukan."];
   let stepIndex = 0;
 
   const textBlock = new BABYLON.GUI.TextBlock();
-  textBlock.text = steps[0];
+  textBlock.text = ""; // Kosongkan awal, nanti diisi efek typing
   textBlock.color = "white";
-  textBlock.fontSize = 38; // Ukuran font pas
+  textBlock.fontSize = 38;
   textBlock.textWrapping = true;
   textBlock.resizeToFit = true;
   textBlock.paddingTop = "30px";
@@ -127,7 +116,44 @@ export function create3DDialog(scene, category) {
   textBlock.paddingBottom = "120px";
   bg.addControl(textBlock);
 
-  // --- TOMBOL KEMBALI (BACK) ---
+  // ============================================================
+  // ⌨️ EFEK TYPEWRITER (RUNNING TEXT)
+  // ============================================================
+  let typingInterval = null;
+
+  function typeText(fullText) {
+    // 1. Reset: Hentikan ketikan sebelumnya jika ada
+    if (typingInterval) clearInterval(typingInterval);
+    
+    // 2. Bersihkan teks saat ini
+    textBlock.text = ""; 
+    
+    let charIndex = 0;
+    
+    // 3. Mulai mengetik huruf demi huruf
+    typingInterval = setInterval(() => {
+        // Cek jika box sudah ditutup/didispose agar tidak error
+        if (box.isDisposed() || textBlock.isDisposed) {
+            clearInterval(typingInterval);
+            return;
+        }
+
+        // Tambahkan satu huruf
+        textBlock.text += fullText.charAt(charIndex);
+        charIndex++;
+
+        // Jika sudah selesai semua huruf, stop interval
+        if (charIndex >= fullText.length) {
+            clearInterval(typingInterval);
+        }
+    }, 20); // <-- Kecepatan ketik (makin kecil makin cepat, 20ms - 50ms ideal)
+  }
+  // ============================================================
+
+  // Jalankan teks pertama kali
+  typeText(steps[0]);
+
+  // --- TOMBOL KEMBALI ---
   const btnBack = BABYLON.GUI.Button.CreateSimpleButton("btnBack", "< KEMBALI");
   btnBack.width = "220px";
   btnBack.height = "70px";
@@ -139,11 +165,11 @@ export function create3DDialog(scene, category) {
   btnBack.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
   btnBack.paddingLeft = "30px";
   btnBack.paddingBottom = "30px";
-  btnBack.isVisible = false; // Awalnya sembunyi
-  btnBack.isPointerBlocker = true; // Wajib untuk VR
+  btnBack.isVisible = false;
+  btnBack.isPointerBlocker = true;
   bg.addControl(btnBack);
 
-  // --- TOMBOL LANJUT (NEXT) ---
+  // --- TOMBOL LANJUT ---
   const btnNext = BABYLON.GUI.Button.CreateSimpleButton("btnNext", "LANJUT >");
   btnNext.width = "220px";
   btnNext.height = "70px";
@@ -155,48 +181,46 @@ export function create3DDialog(scene, category) {
   btnNext.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
   btnNext.paddingRight = "30px";
   btnNext.paddingBottom = "30px";
-  btnNext.isPointerBlocker = true; // Wajib untuk VR
+  btnNext.isPointerBlocker = true;
   bg.addControl(btnNext);
 
   // --- LOGIKA TOMBOL ---
-
-  // Logic Back
+  
   btnBack.onPointerClickObservable.add(() => {
     if (stepIndex > 0) {
       stepIndex--;
-      textBlock.text = steps[stepIndex];
-
-      playTalk(); // Audio Talk
-
-      btnNext.isVisible = true; // Munculkan tombol next jika mundur
-      if (stepIndex === 0) {
-        btnBack.isVisible = false; // Sembunyikan tombol back di halaman pertama
-      }
+      
+      // Ganti text biasa menjadi typeText
+      typeText(steps[stepIndex]); 
+      
+      playTalk();
+      btnNext.isVisible = true;
+      if (stepIndex === 0) btnBack.isVisible = false;
     }
   });
 
-  // Logic Next
   btnNext.onPointerClickObservable.add(() => {
     stepIndex++;
 
     if (stepIndex < steps.length) {
-      textBlock.text = steps[stepIndex];
-
-      playTalk(); // Audio Talk
-
-      btnBack.isVisible = true; // Selalu munculkan tombol back jika sudah maju
+      // Ganti text biasa menjadi typeText
+      typeText(steps[stepIndex]);
+      
+      playTalk();
+      btnBack.isVisible = true;
     } else {
-      textBlock.text = "Tutorial Selesai. Selamat bekerja!";
-
-      playCheer(); // Audio Cheering (Selesai)
-
+      // Ganti text biasa menjadi typeText
+      typeText("Tutorial Selesai. Selamat bekerja!");
+      
+      playCheer();
       btnNext.isVisible = false;
       btnBack.isVisible = false;
-
-      // Tutup box setelah 2.5 detik
+      
       setTimeout(() => {
         box.dispose();
-      }, 2500);
+        // Hentikan typing jika box ditutup paksa oleh timeout
+        if (typingInterval) clearInterval(typingInterval);
+      }, 3500); // Waktu tutup diperlama sedikit biar teks selesai terbaca
     }
   });
 
