@@ -1,5 +1,6 @@
 // src/app.js
 import { createMainMenu } from "./ui/mainmenu.js";
+import { initSignaling, connectRTC } from "./network/webrtc.js"
 
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
@@ -44,6 +45,8 @@ export async function resetScene() {
 }
 
 async function startScene(kind) {
+  await initSignaling();  // Socket.io connect
+  await connectRTC();     // WebRTC peer setup
   // simpan jenis scene
   currentKind = kind;
 
