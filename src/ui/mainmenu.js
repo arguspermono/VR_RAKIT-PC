@@ -7,24 +7,46 @@ export function createMainMenu({
 }) {
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
+  // ============================================================
+  // LOAD BACKGROUND ROOM (GLB)
+  // ============================================================
+  BABYLON.SceneLoader.ImportMesh(
+    "",
+    "./assets/",
+    "computer_lab.glb",
+    scene,
+    (meshes) => {
+      meshes.forEach((m) => {
+        m.scaling = new BABYLON.Vector3(1, 1, 1);
+        m.position = new BABYLON.Vector3(0, 0, 0);
+      });
+
+      // camera fix so menu is nicely framed
+      const cam = scene.activeCamera;
+      cam.position = new BABYLON.Vector3(0, 1.6, -2);
+      cam.setTarget(new BABYLON.Vector3(0, 1.3, 2));
+      cam.applyGravity = false;
+      cam.checkCollisions = false;
+    }
+  );
+
+  // ============================================================
+  // 3D MENU PANEL
+  // ============================================================
   const panel = new BABYLON.GUI.StackPanel3D();
   manager.addControl(panel);
 
-  panel.position = new BABYLON.Vector3(0, 1, 2);
+  panel.position = new BABYLON.Vector3(0, 1, 0.7);
 
   // ============================================================
-  // TITLE TEXT (2D GUI on a transparent plane)
+  // TITLE TEXT
   // ============================================================
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
     "titlePlane",
-    {
-      size: 1.8,
-    },
+    { size: 1.8 },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2, 2); // naikkan di atas tombol
-  titlePlane.rotation = new BABYLON.Vector3(0, 0, 0);
-
+  titlePlane.position = new BABYLON.Vector3(0, 2, 2);
   const titleTexture =
     BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(titlePlane);
 
@@ -33,12 +55,11 @@ export function createMainMenu({
   titleText.color = "white";
   titleText.fontSize = 64;
   titleText.fontStyle = "bold";
-  titleText.textWrapping = true;
-
   titleTexture.addControl(titleText);
 
   // ============================================================
-
+  // BUTTONS
+  // ============================================================
   const btnPC = new BABYLON.GUI.HolographicButton("startPC");
   btnPC.text = "Mulai Perakitan PC";
   panel.addControl(btnPC);
