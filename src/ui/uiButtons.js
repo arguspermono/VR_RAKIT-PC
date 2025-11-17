@@ -1,43 +1,62 @@
 // src/ui/uiButtons.js
-// HUD 2D Buttons (EXIT & RESET) in top-left corner.
-// Works in VR and non-VR. Stays fixed on screen, not world-anchored.
 
 export function createHUD(scene, onExit, onReset) {
-  const ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
-    "hud",
-    true,
-    scene
-  );
+  const posX = -2; // kiri layar
+  const posY = 1.5; // tinggi tombol pertama
+  const gapY = -0.5; // jarak antar tombol
+  const wallZ = 2.5; // posisi depan dinding
+  const scale = 0.7; // ukuran tombol lebih kecil
 
-  // Container on top-left corner
-  const panel = new BABYLON.GUI.StackPanel();
-  panel.isVertical = true;
-  panel.width = "160px";
-  panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
-  panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
-  panel.top = "20px";
-  panel.left = "20px";
-  ui.addControl(panel);
+  function makePanel(name, text, offsetY, callback) {
+    const plane = BABYLON.MeshBuilder.CreatePlane(
+      name,
+      { width: 1.2 * scale, height: 0.55 * scale },
+      scene
+    );
 
-  // Helper button creator
-  function makeButton(text, callback) {
-    const btn = BABYLON.GUI.Button.CreateSimpleButton(text, text);
-    btn.width = "140px";
-    btn.height = "45px";
-    btn.fontSize = 22;
-    btn.color = "white";
-    btn.background = "rgba(0,0,0,0.55)";
-    btn.thickness = 2;
-    btn.cornerRadius = 10;
-    btn.onPointerUpObservable.add(callback);
-    return btn;
+    // POSISI TOMBOL DI KIRI SEMUA
+    plane.position = new BABYLON.Vector3(posX, posY + offsetY, wallZ);
+
+    // JANGAN DIPUTAR (agar teks tidak kebalik)
+    plane.rotation = new BABYLON.Vector3(0, 0, 0);
+
+    plane.isPickable = true;
+    plane.renderingGroupId = 3;
+
+    // MATERIAL (agar tekstur GUI tidak mirror)
+    const mat = new BABYLON.StandardMaterial(name + "_mat", scene);
+    mat.backFaceCulling = false;
+    mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+    plane.material = mat;
+
+    // UI
+    const tex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
+      plane,
+      1024,
+      512
+    );
+    const rect = new BABYLON.GUI.Rectangle();
+    rect.background = "white"; // 🔥 BOX PUTIH
+    rect.thickness = 3;
+    rect.color = "black"; // 🔥 BORDER HITAM
+    rect.cornerRadius = 12;
+    rect.isPointerBlocker = true;
+    tex.addControl(rect);
+
+    const label = new BABYLON.GUI.TextBlock();
+    label.text = text;
+    label.fontSize = 52;
+    label.color = "black"; // 🔥 TEXT HITAM
+    label.fontWeight = "bold";
+    rect.addControl(label);
+
+    rect.onPointerClickObservable.add(() => callback && callback());
+    return plane;
   }
 
-  // EXIT
-  panel.addControl(makeButton("EXIT", onExit));
+  // Buat tombol EXIT (atas) & RESET (bawah)
+  const btnExit = makePanel("btnExit", "EXIT", 0, onExit);
+  const btnReset = makePanel("btnReset", "RESET", gapY, onReset);
 
-  // RESET
-  panel.addControl(makeButton("RESET", onReset));
-
-  return ui;
+  return { btnExit, btnReset };
 }
