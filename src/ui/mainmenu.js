@@ -199,7 +199,7 @@ export function createMainMenu({
   // Kita simpan tombol dalam variabel agar bisa diatur posisinya
   const btnPC = createCyberButton(
     "btnPC",
-    "Rakitan PC",
+    "Mulai Rakit PC",
     "DESKTOP WORKSTATION",
     panel,
     onStartPC
@@ -207,7 +207,7 @@ export function createMainMenu({
 
   const btnLaptop = createCyberButton(
     "btnLaptop",
-    "Rakitan Laptop",
+    "Mulai Rakit Laptop",
     "PORTABLE DEVICE",
     panel,
     onStartLaptop
@@ -215,7 +215,7 @@ export function createMainMenu({
 
   const btnServer = createCyberButton(
     "btnServer",
-    "Rakitan Server",
+    "Mulai Rakit Server",
     "ENTERPRISE RACK",
     panel,
     onStartServer
