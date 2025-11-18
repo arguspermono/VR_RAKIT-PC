@@ -2,13 +2,16 @@
 // ============================================================================
 // Features:
 // ✔ Audio Integration
-// ✔ Physics Logic (Revised):
-//    - DRAG: Mass TETAP 1 (Dynamic). Gerak pakai Velocity (Bisa tabrak meja).
-//    - DROP: Lepas Velocity -> Jatuh natural.
-//    - SNAP: Physics DISPOSE (Mati total).
+// ✔ Physics Logic (Revised)
+// ✔ AI Component Identity Card (NEW)
 // ============================================================================
 
 import { playPick, playPut, playCheer } from "../audio/audioManager.js";
+
+// --- AI CARD START ---
+// Import service AI yang baru kita buat
+import { getComponentInsight } from "./aiService.js";
+// --- AI CARD END ---
 
 // --------------------------- Utils ---------------------------
 
@@ -98,6 +101,9 @@ function makeGhost(main, scene) {
 // --------------------------- Slot Lookup ---------------------------
 function getSlot(key, slots) {
   if (!slots) return null;
+  // --- Penyesuaian kecil agar nama file glb (processor) cocok ---
+  if (key === "processor") return slots.cpu;
+  // ---
   if (key === "mobo") return slots.mobo;
   if (key === "cpu") return slots.cpu;
   if (key === "hdd") return slots.hdd;
@@ -141,6 +147,7 @@ function snapItem(item, slot, scene) {
   if (loaded.mobo) {
     if (
       item.key === "cpu" ||
+      item.key === "processor" || // Penyesuaian
       item.key === "gpu" ||
       item.key.startsWith("ram")
     ) {
@@ -165,6 +172,83 @@ function snapItem(item, slot, scene) {
 const COLOR_GREEN = BABYLON.Color3.Green();
 const COLOR_YELLOW = new BABYLON.Color3(1, 0.8, 0.2);
 
+// --- AI CARD START ---
+// Variabel global untuk UI & Kartu AI
+let ui_scanner = null;
+let currentCard = null;
+
+/**
+ * Menampilkan kartu info AI di atas mesh
+ * @param {BABYLON.AbstractMesh} mesh - Mesh untuk diikuti
+ * @param {object} data - Data dari AI { role, desc, funFact }
+ */
+function showIdentityCard(mesh, data) {
+  if (!ui_scanner) {
+    ui_scanner =
+      BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI_SCANNER");
+  }
+
+  // Hapus kartu lama jika ada
+  if (currentCard) currentCard.dispose();
+
+  // 📌 Ukuran diperbesar (dari 220x110 → 320x160)
+  const rect = new BABYLON.GUI.Rectangle();
+  rect.width = "320px";
+  rect.height = "160px";
+  rect.cornerRadius = 14;
+  rect.color = "#00d2ff";
+  rect.thickness = 2.5;
+  rect.background = "rgba(0, 0, 0, 0.85)";
+
+  // 📌 ROLE — lebih besar
+  const roleText = new BABYLON.GUI.TextBlock();
+  roleText.text = data.role.toUpperCase();
+  roleText.color = data.role === "SCANNING..." ? "yellow" : "#00d2ff";
+  roleText.fontSize = 22; // sebelumnya 16
+  roleText.fontWeight = "bold";
+  roleText.top = "-55px"; // disesuaikan dgn ukuran baru
+  rect.addControl(roleText);
+
+  // 📌 DESC — lebih besar & lebih mudah dibaca
+  const descText = new BABYLON.GUI.TextBlock();
+  descText.text = data.desc;
+  descText.color = "white";
+  descText.fontSize = 16; // sebelumnya 12
+  descText.textWrapping = true;
+  descText.top = "-5px";
+  descText.width = "92%";
+  rect.addControl(descText);
+
+  // 📌 FUN FACT — lebih besar
+  const factText = new BABYLON.GUI.TextBlock();
+  factText.text = data.funFact === "..." ? "..." : "INFO: " + data.funFact;
+  factText.color = "yellow";
+  factText.fontSize = 14; // sebelumnya 10
+  factText.textWrapping = true;
+  factText.top = "55px";
+  factText.width = "92%";
+  rect.addControl(factText);
+
+  ui_scanner.addControl(rect);
+
+  // 📌 Offset dinaikkan sedikit supaya proporsional
+  rect.linkWithMesh(mesh);
+  rect.linkOffsetY = -140;
+
+  currentCard = rect;
+}
+
+/**
+ * Sembunyikan kartu info AI
+ */
+function hideCard() {
+  if (currentCard) {
+    currentCard.dispose();
+    currentCard = null;
+  }
+}
+// --- AI CARD END ---
+
 // --------------------------- attachInteractions ---------------------------
 export function attachInteractions(scene) {
   const app = scene.__app;
@@ -177,7 +261,8 @@ export function attachInteractions(scene) {
   const checkAllDone = () => {
     let allDone = true;
     for (const key of Object.keys(loaded)) {
-      if (key === "case") continue;
+      if (key === "case" || key === "server_rack" || key === "casing_laptop")
+        continue; // Abaikan casing
       const slot = getSlot(key, slots);
       if (slot && !slot.used) {
         allDone = false;
@@ -185,7 +270,7 @@ export function attachInteractions(scene) {
       }
     }
     if (allDone) {
-      console.log("🎉 Perakitan Selesai!");
+      debug("🎉 Perakitan Selesai!");
       playCheer();
     }
   };
@@ -194,7 +279,9 @@ export function attachInteractions(scene) {
   // MOUSE DRAG INTERACTION (PHYSICS-BASED)
   // ===========================
   Object.keys(loaded).forEach((key) => {
-    if (key === "case") return;
+    // Abaikan casing/rak
+    if (key === "case" || key === "server_rack" || key === "casing_laptop")
+      return;
 
     const item = loaded[key];
     const root = item.root;
@@ -202,13 +289,8 @@ export function attachInteractions(scene) {
     const slot = getSlot(key, slots);
     if (!slot) return;
 
-    // 1. Gunakan Drag Behavior tanpa Plane Normal (Bebas 3D)
     const drag = new BABYLON.PointerDragBehavior();
-
-    // 2. PENTING: Matikan moveAttached agar posisi tidak dipaksa (tembus collider)
-    // Kita akan gerakkan manual pakai Physics Velocity
     drag.moveAttached = false;
-
     root.addBehavior(drag);
 
     let ghost = null;
@@ -217,52 +299,49 @@ export function attachInteractions(scene) {
     drag.onDragStartObservable.add(() => {
       if (!slot.used) {
         playPick();
-        // Pastikan impostor aktif & Dynamic (Mass > 0) agar bisa tabrak meja
         if (root.physicsImpostor) {
           root.physicsImpostor.wakeUp();
-          // Jangan setMass(0)! Biarkan Mass 1 agar collision dengan Static Object jalan.
         }
+
+        // --- AI CARD START ---
+        // Tampilkan "Scanning..." saat dipegang
+        showIdentityCard(root, {
+          role: "SCANNING...",
+          desc: "Mengidentifikasi komponen...",
+          funFact: "...",
+        });
+
+        // Panggil AI (Async)
+        getComponentInsight(key).then((aiData) => {
+          // Update kartu HANYA jika masih dipegang
+          if (currentCard && currentCard._linkedMesh === root) {
+            showIdentityCard(root, aiData);
+          }
+        });
+        // --- AI CARD END ---
       }
     });
 
     drag.onDragObservable.add((event) => {
+      // ... (KODE LAMA ANDA, TIDAK DIUBAH) ...
       if (slot.used) return;
       if (!root.physicsImpostor) return;
-
-      // 3. LOGIKA GERAK: Tarik objek ke arah mouse menggunakan Velocity
-      // Ini membuat physics engine tetap menghitung tabrakan
       const targetPos = event.dragPlanePoint;
       const currentPos = root.getAbsolutePosition();
-
-      // Hitung vektor arah ke mouse
       const diff = targetPos.subtract(currentPos);
-
-      // Scale factor (kecepatan ikut mouse). 15 cukup responsif.
-      // Semakin besar, semakin kuat tarikannya (tapi bisa tembus jika terlalu cepat).
       const velocity = diff.scale(15);
-
-      // Terapkan Velocity
       root.physicsImpostor.setLinearVelocity(velocity);
-
-      // Matikan Rotasi (Angular) agar barang tidak muter-muter saat ditarik
       root.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
-
-      // Reset rotasi visual biar tegak lurus (opsional, agar rapi)
-      // root.rotationQuaternion = BABYLON.Quaternion.Identity();
-
-      // --- Logic Snap Highlight ---
       const dist = BABYLON.Vector3.Distance(
         getMainMesh(item).getAbsolutePosition(),
         getAbsPos(slot.mesh)
       );
       hl.removeAllMeshes();
       const tolerance = item.key === "console" ? 0.55 : 0.25;
-
       if (dist < tolerance) {
         canSnap = true;
         hl.addMesh(main, COLOR_GREEN);
         hl.addMesh(slot.mesh, COLOR_YELLOW);
-
         if (!ghost) ghost = makeGhost(main, scene);
         if (ghost) {
           ghost.setAbsolutePosition(getAbsPos(slot.mesh));
@@ -277,11 +356,14 @@ export function attachInteractions(scene) {
     });
 
     drag.onDragEndObservable.add(() => {
+      // --- AI CARD START ---
+      hideCard(); // Sembunyikan kartu saat dilepas
+      // --- AI CARD END ---
+
       hl.removeAllMeshes();
       if (ghost) ghost.setEnabled(false);
 
       if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
-        // SNAP: Physics Dispose
         const placed = snapItem(item, slot, scene);
         scene.__tutorial.onSnapped(item.key);
         playPut();
@@ -289,9 +371,7 @@ export function attachInteractions(scene) {
         setTimeout(() => hl.removeAllMeshes(), 800);
         checkAllDone();
       } else {
-        // DROP: Lepaskan Velocity, biarkan jatuh
         if (root.physicsImpostor) {
-          // Dampen velocity supaya tidak terlempar kencang saat dilepas
           root.physicsImpostor.setLinearVelocity(
             root.physicsImpostor.getLinearVelocity().scale(0.1)
           );
@@ -304,9 +384,6 @@ export function attachInteractions(scene) {
   // ===========================
   // VR INTERACTION (Biarkan Default / Parenting)
   // ===========================
-  // Catatan: VR menggunakan parenting ke tangan, jadi collision fisika
-  // saat grab VR agak kompleks (perlu Physics Constraint).
-  // Kode di bawah ini adalah logika standar Grab-Parent-Drop.
   if (app.xr) {
     const xr = app.xr;
     xr.input.onControllerAddedObservable.add((controller) => {
@@ -320,7 +397,14 @@ export function attachInteractions(scene) {
         const tryGrab = () => {
           if (grabbed) return;
           for (const key of Object.keys(loaded)) {
-            if (key === "case") continue;
+            // Abaikan casing
+            if (
+              key === "case" ||
+              key === "server_rack" ||
+              key === "casing_laptop"
+            )
+              continue;
+
             const item = loaded[key];
             if (!getSlot(key, slots) || getSlot(key, slots).used) continue;
 
@@ -330,12 +414,25 @@ export function attachInteractions(scene) {
             );
             if (dist < 0.22) {
               grabbed = { key, item, slot: getSlot(key, slots) };
-              // VR: Matikan physics saat dipegang (biar tidak berat/jatuh dari tangan)
               if (item.root.physicsImpostor)
                 item.root.physicsImpostor.setMass(0);
               item.root.setParent(hand);
               item.root.position = BABYLON.Vector3.Zero();
               playPick();
+
+              // --- AI CARD START (VR) ---
+              showIdentityCard(item.root, {
+                role: "SCANNING...",
+                desc: "Mengidentifikasi komponen...",
+                funFact: "...",
+              });
+              getComponentInsight(key).then((aiData) => {
+                // Update HANYA jika masih dipegang
+                if (grabbed && grabbed.key === key) {
+                  showIdentityCard(item.root, aiData);
+                }
+              });
+              // --- AI CARD END (VR) ---
               return;
             }
           }
@@ -343,11 +440,15 @@ export function attachInteractions(scene) {
 
         const releaseGrab = () => {
           if (!grabbed) return;
+
+          // --- AI CARD START (VR) ---
+          hideCard(); // Sembunyikan saat dilepas
+          // --- AI CARD END (VR) ---
+
           const { key, item, slot } = grabbed;
           grabbed = null;
           item.root.setParent(null);
 
-          // VR Drop: Kembalikan Mass 1 agar jatuh
           if (item.root.physicsImpostor) item.root.physicsImpostor.setMass(1);
 
           const dist = BABYLON.Vector3.Distance(
