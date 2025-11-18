@@ -1,15 +1,13 @@
 // src/core/interactions.js
 // ============================================================================
 // Features:
-// ✔ Audio Integration (Pick, Put, & Auto Cheer on Finish)
-// ✔ GPU offset fix
-// ✔ RAM upright fix
-// ✔ CPU/GPU/RAM parented to MOBO
-// ✔ Ghost preview
-// ✔ VR + mouse drag working
+// ✔ Audio Integration
+// ✔ Physics Logic (Revised):
+//    - DRAG: Mass TETAP 1 (Dynamic). Gerak pakai Velocity (Bisa tabrak meja).
+//    - DROP: Lepas Velocity -> Jatuh natural.
+//    - SNAP: Physics DISPOSE (Mati total).
 // ============================================================================
 
-// 1. TAMBAHKAN playCheer DI IMPORT
 import { playPick, playPut, playCheer } from "../audio/audioManager.js";
 
 // --------------------------- Utils ---------------------------
@@ -75,7 +73,6 @@ const ROT_FIX = {
 let _ghostMat = null;
 function ghostMaterial(scene) {
   if (_ghostMat) return _ghostMat;
-
   _ghostMat = new BABYLON.StandardMaterial("__ghost_mat__", scene);
   _ghostMat.alpha = 0.35;
   _ghostMat.emissiveColor = new BABYLON.Color3(0.5, 0.7, 1);
@@ -94,7 +91,6 @@ function makeGhost(main, scene) {
     g.renderingGroupId = 1;
     return g;
   } catch (e) {
-    debug("Ghost fail", e);
     return null;
   }
 }
@@ -102,7 +98,6 @@ function makeGhost(main, scene) {
 // --------------------------- Slot Lookup ---------------------------
 function getSlot(key, slots) {
   if (!slots) return null;
-
   if (key === "mobo") return slots.mobo;
   if (key === "cpu") return slots.cpu;
   if (key === "hdd") return slots.hdd;
@@ -119,7 +114,6 @@ function getSlot(key, slots) {
   if (key === "ups") return slots.slot_ups;
   if (key === "console") return slots.slot_console;
   if (key === `server`) return slots.slot_server;
-
   return null;
 }
 
@@ -129,7 +123,6 @@ function snapItem(item, slot, scene) {
   const loaded = scene.__app.loaded;
 
   let slotPos = getAbsPos(slot.mesh).clone();
-
   if (item.key === "gpu") slotPos.z -= 0.025;
   if (item.key.startsWith("ram")) slotPos.z -= 0.03;
   if (item.key === "mobo") slotPos.z -= 0.001;
@@ -141,11 +134,9 @@ function snapItem(item, slot, scene) {
     finalQuat = ROT_FIX[item.key] || BABYLON.Quaternion.Identity();
   }
 
-  const clone = root.clone(root.name + "_SNAPPED");
-  clone.setAbsolutePosition(slotPos);
-  clone.rotationQuaternion = finalQuat;
-  clone.scaling.copyFrom(root.scaling);
-  clone.isPickable = false;
+  root.setParent(null);
+  root.setAbsolutePosition(slotPos);
+  root.rotationQuaternion = finalQuat;
 
   if (loaded.mobo) {
     if (
@@ -153,21 +144,22 @@ function snapItem(item, slot, scene) {
       item.key === "gpu" ||
       item.key.startsWith("ram")
     ) {
-      clone.setParent(loaded.mobo.root);
+      root.setParent(loaded.mobo.root);
     }
   }
 
-  root.setEnabled(false);
+  // 5. SNAP: HAPUS FISIK TOTAL
   if (root.physicsImpostor) {
     root.physicsImpostor.dispose();
     root.physicsImpostor = null;
   }
 
+  root.isPickable = false;
   slot.used = true;
   slot.mesh.setEnabled(false);
   slot.mesh.isPickable = false;
 
-  return clone;
+  return root;
 }
 
 const COLOR_GREEN = BABYLON.Color3.Green();
@@ -182,29 +174,24 @@ export function attachInteractions(scene) {
 
   const hl = new BABYLON.HighlightLayer("HL_INTERACT", scene);
 
-  // 2. FUNGSI CEK KELENGKAPAN (AUTO CHEER)
   const checkAllDone = () => {
     let allDone = true;
-    // Cek setiap item yang diload
     for (const key of Object.keys(loaded)) {
-      if (key === "case") continue; // Abaikan casing
-
+      if (key === "case") continue;
       const slot = getSlot(key, slots);
-      // Jika item punya slot, tapi slotnya belum 'used', berarti belum selesai
       if (slot && !slot.used) {
         allDone = false;
         break;
       }
     }
-
     if (allDone) {
-      console.log("🎉 Perakitan Selesai! Memutar audio cheering...");
+      console.log("🎉 Perakitan Selesai!");
       playCheer();
     }
   };
 
   // ===========================
-  // MOUSE DRAG INTERACTION
+  // MOUSE DRAG INTERACTION (PHYSICS-BASED)
   // ===========================
   Object.keys(loaded).forEach((key) => {
     if (key === "case") return;
@@ -215,22 +202,57 @@ export function attachInteractions(scene) {
     const slot = getSlot(key, slots);
     if (!slot) return;
 
-    const drag = new BABYLON.PointerDragBehavior({
-      dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-    });
+    // 1. Gunakan Drag Behavior tanpa Plane Normal (Bebas 3D)
+    const drag = new BABYLON.PointerDragBehavior();
+
+    // 2. PENTING: Matikan moveAttached agar posisi tidak dipaksa (tembus collider)
+    // Kita akan gerakkan manual pakai Physics Velocity
+    drag.moveAttached = false;
+
     root.addBehavior(drag);
 
     let ghost = null;
     let canSnap = false;
 
     drag.onDragStartObservable.add(() => {
-      if (!slot.used) playPick();
+      if (!slot.used) {
+        playPick();
+        // Pastikan impostor aktif & Dynamic (Mass > 0) agar bisa tabrak meja
+        if (root.physicsImpostor) {
+          root.physicsImpostor.wakeUp();
+          // Jangan setMass(0)! Biarkan Mass 1 agar collision dengan Static Object jalan.
+        }
+      }
     });
 
-    drag.onDragObservable.add(() => {
+    drag.onDragObservable.add((event) => {
       if (slot.used) return;
+      if (!root.physicsImpostor) return;
+
+      // 3. LOGIKA GERAK: Tarik objek ke arah mouse menggunakan Velocity
+      // Ini membuat physics engine tetap menghitung tabrakan
+      const targetPos = event.dragPlanePoint;
+      const currentPos = root.getAbsolutePosition();
+
+      // Hitung vektor arah ke mouse
+      const diff = targetPos.subtract(currentPos);
+
+      // Scale factor (kecepatan ikut mouse). 15 cukup responsif.
+      // Semakin besar, semakin kuat tarikannya (tapi bisa tembus jika terlalu cepat).
+      const velocity = diff.scale(15);
+
+      // Terapkan Velocity
+      root.physicsImpostor.setLinearVelocity(velocity);
+
+      // Matikan Rotasi (Angular) agar barang tidak muter-muter saat ditarik
+      root.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+
+      // Reset rotasi visual biar tegak lurus (opsional, agar rapi)
+      // root.rotationQuaternion = BABYLON.Quaternion.Identity();
+
+      // --- Logic Snap Highlight ---
       const dist = BABYLON.Vector3.Distance(
-        getAbsPos(main),
+        getMainMesh(item).getAbsolutePosition(),
         getAbsPos(slot.mesh)
       );
       hl.removeAllMeshes();
@@ -259,96 +281,98 @@ export function attachInteractions(scene) {
       if (ghost) ghost.setEnabled(false);
 
       if (canSnap && !slot.used && scene.__tutorial.allowSnap(item.key)) {
+        // SNAP: Physics Dispose
         const placed = snapItem(item, slot, scene);
         scene.__tutorial.onSnapped(item.key);
-
-        playPut(); // Bunyi 'Tak'
-
+        playPut();
         hl.addMesh(placed, COLOR_GREEN);
         setTimeout(() => hl.removeAllMeshes(), 800);
-
-        // 3. CEK SELESAI SETELAH PASANG (MOUSE)
         checkAllDone();
+      } else {
+        // DROP: Lepaskan Velocity, biarkan jatuh
+        if (root.physicsImpostor) {
+          // Dampen velocity supaya tidak terlempar kencang saat dilepas
+          root.physicsImpostor.setLinearVelocity(
+            root.physicsImpostor.getLinearVelocity().scale(0.1)
+          );
+          root.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+        }
       }
     });
   });
 
-  // ===================================================
-  // VR INTERACTION
-  // ===================================================
-  if (!xr) return;
+  // ===========================
+  // VR INTERACTION (Biarkan Default / Parenting)
+  // ===========================
+  // Catatan: VR menggunakan parenting ke tangan, jadi collision fisika
+  // saat grab VR agak kompleks (perlu Physics Constraint).
+  // Kode di bawah ini adalah logika standar Grab-Parent-Drop.
+  if (app.xr) {
+    const xr = app.xr;
+    xr.input.onControllerAddedObservable.add((controller) => {
+      controller.onMotionControllerInitObservable.add((mc) => {
+        const trigger = mc.getComponent("trigger");
+        const squeeze = mc.getComponent("squeeze");
+        const hand = controller.grip || controller.pointer;
+        let grabbed = null;
+        let ghost = null;
 
-  xr.input.onControllerAddedObservable.add((controller) => {
-    controller.onMotionControllerInitObservable.add((mc) => {
-      const trigger = mc.getComponent("trigger");
-      const squeeze = mc.getComponent("squeeze");
-      const hand = controller.grip || controller.pointer;
+        const tryGrab = () => {
+          if (grabbed) return;
+          for (const key of Object.keys(loaded)) {
+            if (key === "case") continue;
+            const item = loaded[key];
+            if (!getSlot(key, slots) || getSlot(key, slots).used) continue;
 
-      let grabbed = null;
-      let ghost = null;
+            const dist = BABYLON.Vector3.Distance(
+              getMainMesh(item).getAbsolutePosition(),
+              hand.getAbsolutePosition()
+            );
+            if (dist < 0.22) {
+              grabbed = { key, item, slot: getSlot(key, slots) };
+              // VR: Matikan physics saat dipegang (biar tidak berat/jatuh dari tangan)
+              if (item.root.physicsImpostor)
+                item.root.physicsImpostor.setMass(0);
+              item.root.setParent(hand);
+              item.root.position = BABYLON.Vector3.Zero();
+              playPick();
+              return;
+            }
+          }
+        };
 
-      function tryGrab() {
-        if (grabbed) return;
+        const releaseGrab = () => {
+          if (!grabbed) return;
+          const { key, item, slot } = grabbed;
+          grabbed = null;
+          item.root.setParent(null);
 
-        for (const key of Object.keys(loaded)) {
-          if (key === "case") continue;
-
-          const item = loaded[key];
-          const main = getMainMesh(item);
-          const slot = getSlot(key, slots);
-          if (!slot || slot.used) continue;
+          // VR Drop: Kembalikan Mass 1 agar jatuh
+          if (item.root.physicsImpostor) item.root.physicsImpostor.setMass(1);
 
           const dist = BABYLON.Vector3.Distance(
-            getAbsPos(main),
-            hand.getAbsolutePosition()
+            getMainMesh(item).getAbsolutePosition(),
+            getAbsPos(slot.mesh)
           );
-
-          if (dist < 0.22) {
-            grabbed = { key, item, main, slot, root: item.root };
-            item.root.setParent(hand);
-            playPick();
-            return;
-          }
-        }
-      }
-
-      function releaseGrab() {
-        if (!grabbed) return;
-        const { key, item, main, slot, root } = grabbed;
-        grabbed = null;
-
-        root.setParent(null);
-
-        const dist = BABYLON.Vector3.Distance(
-          getAbsPos(main),
-          getAbsPos(slot.mesh)
-        );
-
-        if (dist < 0.22 && !slot.used) {
-          if (scene.__tutorial.allowSnap(key)) {
+          if (dist < 0.22 && scene.__tutorial.allowSnap(key)) {
             const placed = snapItem(item, slot, scene);
             scene.__tutorial.onSnapped(key);
-
-            playPut(); // Bunyi 'Tak'
-
+            playPut();
             hl.addMesh(placed, COLOR_GREEN);
             setTimeout(() => hl.removeAllMeshes(), 800);
-
-            // 4. CEK SELESAI SETELAH PASANG (VR)
             checkAllDone();
           }
-        }
+          if (ghost) ghost.setEnabled(false);
+        };
 
-        if (ghost) ghost.setEnabled(false);
-      }
-
-      [trigger, squeeze].forEach((btn) => {
-        if (!btn) return;
-        btn.onButtonStateChangedObservable.add((state) => {
-          if (state.pressed) tryGrab();
-          else releaseGrab();
+        [trigger, squeeze].forEach((btn) => {
+          if (!btn) return;
+          btn.onButtonStateChangedObservable.add((s) => {
+            if (s.pressed) tryGrab();
+            else releaseGrab();
+          });
         });
       });
     });
-  });
+  }
 }
