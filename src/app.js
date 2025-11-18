@@ -1,5 +1,6 @@
 // src/app.js
 import { createMainMenu } from "./ui/mainmenu.js";
+import { createSuperMenu } from "./ui/supermenu.js";   // ← tambahkan ini
 
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
@@ -13,17 +14,11 @@ export async function resetScene() {
 
   console.log("Reset scene:", currentKind);
 
-  // 1. Dispose scene lama
   if (currentScene) {
-    try {
-      currentScene.dispose();
-    } catch (e) {
-      console.warn(e);
-    }
-    currentScene = null; 
+    try { currentScene.dispose(); } catch (e) { console.warn(e); }
+    currentScene = null;
   }
 
-  // 2. Load ulang scene berdasarkan jenisnya
   try {
     if (currentKind === "pc") {
       const mod = await import("./scenes/scenePC.js");
@@ -37,25 +32,20 @@ export async function resetScene() {
     }
   } catch (e) {
     console.error("Failed to reset scene:", e);
-    window.location.reload(); // fallback
+    window.location.reload();
   }
 
   console.log("Scene reloaded OK");
 }
 
 async function startScene(kind) {
-  // simpan jenis scene
   currentKind = kind;
 
-  // dispose menu
   if (menuScene) {
-    try {
-      menuScene.dispose();
-    } catch (e) {}
+    try { menuScene.dispose(); } catch (e) {}
     menuScene = null;
   }
 
-  // load scene
   try {
     if (kind === "pc") {
       const mod = await import("./scenes/scenePC.js");
@@ -69,17 +59,54 @@ async function startScene(kind) {
     }
   } catch (e) {
     console.error("Scene load failed:", e);
-    // window.location.reload();
     throw e;
   }
 
   engine.stopRenderLoop();
-
   engine.runRenderLoop(() => {
     if (currentScene) currentScene.render();
   });
 }
 
+// ──────────────────────────────────────────────
+//  SUPER MENU BARU
+// ──────────────────────────────────────────────
+function showSuperMenu() {
+  const scene = new BABYLON.Scene(engine);
+  scene.clearColor = new BABYLON.Color3(0, 0, 0); // full black
+
+  const cam = new BABYLON.UniversalCamera(
+    "superCam",
+    new BABYLON.Vector3(0, 1.5, -3),
+    scene
+  );
+  cam.setTarget(BABYLON.Vector3.Zero());
+  cam.attachControl(canvas, true);
+
+  new BABYLON.HemisphericLight(
+    "superLight",
+    new BABYLON.Vector3(0, 1, 0),
+    scene
+  );
+
+  // panggil UI SuperMenu
+  createSuperMenu({
+    scene,
+    onStart: () => {       // tombol "Start"
+      scene.dispose();
+      showMenu();          // masuk ke main menu lama
+    },
+    onAbout: () => alert("About page"),
+    onCredits: () => alert("Credits page"),
+  });
+
+  engine.stopRenderLoop();
+  engine.runRenderLoop(() => scene.render());
+}
+
+// ──────────────────────────────────────────────
+//  MAIN MENU LAMA
+// ──────────────────────────────────────────────
 function showMenu() {
   menuScene = new BABYLON.Scene(engine);
   menuScene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
@@ -118,11 +145,15 @@ function showMenu() {
   });
 
   engine.stopRenderLoop();
-
   engine.runRenderLoop(() => {
     if (menuScene) menuScene.render();
   });
 }
 
-showMenu();
+// ──────────────────────────────────────────────
+//  MULAI DARI SUPER MENU
+// ──────────────────────────────────────────────
+
+showSuperMenu();   // ← sebelumnya showMenu()
+
 window.addEventListener("resize", () => engine.resize());
