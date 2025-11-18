@@ -1,7 +1,7 @@
 // src/ui/mainmenu.js
 
 // ============================================================
-// 🎵 AUDIO SYSTEM (DARI KODE B)
+// 🎵 AUDIO SYSTEM
 // ============================================================
 let _audioInitialized = false;
 let _clickSfx = null;
@@ -49,7 +49,88 @@ function startMenuBGM() {
 }
 
 // ============================================================
-// MAIN MENU (VISUAL DARI KODE A + AUDIO)
+// 🛠️ HELPER: CREATE FUTURISTIC BUTTON (UPDATED SIZE)
+// ============================================================
+function createCyberButton(name, mainText, subText, panel, onClick) {
+  const btn = new BABYLON.GUI.HolographicButton(name);
+  panel.addControl(btn);
+
+  // 1. UPDATE: Perlebar tombol (Scaling X) agar teks panjang muat
+  // Sebelumnya 1.1 -> Sekarang 1.6
+  btn.scaling = new BABYLON.Vector3(1.2, 0.8, 1);
+  btn.cornerRadius = 5;
+
+  // Material Belakang (Dark Glass Look)
+  if (btn.backMaterial) {
+    btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1);
+    btn.backMaterial.alpha = 0.8;
+  }
+
+  // Isi Tombol
+  const stack = new BABYLON.GUI.StackPanel();
+  stack.isVertical = true;
+  stack.width = "100%";
+  btn.content = stack;
+
+  // Teks Utama (Besar & Neon)
+  const title = new BABYLON.GUI.TextBlock();
+  title.text = mainText.toUpperCase();
+  title.color = "#00FFFF"; // Cyan Neon
+
+  // 2. UPDATE: Kecilkan Font Size
+  // Sebelumnya 34 -> Sekarang 22 (Supaya tidak kepotong)
+  title.fontSize = 22;
+  title.fontStyle = "bold";
+
+  // Height diatur agar teks tidak mepet
+  title.height = "30px";
+
+  title.shadowColor = "#008888";
+  title.shadowBlur = 5;
+  stack.addControl(title);
+
+  // Teks Sub (Kecil & Techy)
+  const subtitle = new BABYLON.GUI.TextBlock();
+  subtitle.text = `>> ${subText} <<`;
+  subtitle.color = "#AAAAAA";
+  subtitle.fontSize = 12; // Kecilkan sedikit juga (sebelumnya 14)
+  subtitle.height = "20px";
+  stack.addControl(subtitle);
+
+  // Event Handler
+  btn.onPointerUpObservable.add(() => {
+    playMenuClick();
+    startMenuBGM();
+    // Animasi klik
+    const anim = BABYLON.Animation.CreateAndStartAnimation(
+      "btnClick",
+      btn,
+      "scaling",
+      60,
+      10,
+      btn.scaling,
+      new BABYLON.Vector3(1.7, 0.9, 1.2),
+      BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
+
+    if (onClick) onClick();
+  });
+
+  // Efek Hover
+  btn.onPointerEnterObservable.add(() => {
+    title.color = "#FFFFFF";
+    subtitle.color = "#00FFFF";
+  });
+  btn.onPointerOutObservable.add(() => {
+    title.color = "#00FFFF";
+    subtitle.color = "#AAAAAA";
+  });
+
+  return btn;
+}
+
+// ============================================================
+// MAIN MENU (LAYOUT MANUAL AGAR SIMETRIS)
 // ============================================================
 export function createMainMenu({
   scene,
@@ -57,14 +138,11 @@ export function createMainMenu({
   onStartLaptop,
   onStartServer,
 }) {
-  // 1. Inisialisasi Audio saat menu dibuat
   initMenuAudio();
 
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
-  // ============================================================
-  // LOAD BACKGROUND ROOM (GLB)
-  // ============================================================
+  // LOAD ROOM
   BABYLON.SceneLoader.ImportMesh(
     "",
     "./assets/",
@@ -76,7 +154,6 @@ export function createMainMenu({
         m.position = new BABYLON.Vector3(0, 0, 0);
       });
 
-      // Camera setup dari Kode A
       const cam = scene.activeCamera;
       cam.position = new BABYLON.Vector3(0, 1.6, 1);
       cam.setTarget(new BABYLON.Vector3(0, 1.3, 2));
@@ -85,23 +162,18 @@ export function createMainMenu({
     }
   );
 
-  // ============================================================
-  // 3D MENU PANEL (Posisi dari Kode A)
-  // ============================================================
-  const panel = new BABYLON.GUI.StackPanel3D();
+  // 1. UBAH PANEL JADI CONTAINER (Agar bisa atur posisi manual)
+  const panel = new BABYLON.GUI.Container3D();
   manager.addControl(panel);
   panel.position = new BABYLON.Vector3(0, 1, 4);
 
-  // ============================================================
-  // TITLE TEXT (Tampilan Bagus dari Kode A)
-  // ============================================================
+  // TITLE TEXT
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
     "titlePlane",
-    { width: 3.5, height: 0.8 },
+    { width: 4.5, height: 1.0 },
     scene
   );
-
-  titlePlane.position = new BABYLON.Vector3(0, 2.2, 4);
+  titlePlane.position = new BABYLON.Vector3(0, 2.3, 4);
 
   const titleTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
@@ -111,58 +183,52 @@ export function createMainMenu({
   );
 
   const titleText = new BABYLON.GUI.TextBlock();
-  titleText.text =
-    "Selamat Datang di 'CraftLab', Dunia Simulasi Perakitan Komputer";
+  titleText.text = "CRAFTLAB SIMULATION";
   titleText.color = "white";
-  titleText.fontSize = 130;
+  titleText.fontSize = 150;
+  titleText.fontFamily = "Monospace";
   titleText.fontStyle = "bold";
-  titleText.resizeToFit = true;
-  titleText.textWrapping = true;
-  titleText.paddingTop = "10px";
-  titleText.paddingBottom = "10px";
-  titleText.paddingLeft = "20px";
-  titleText.paddingRight = "20px";
-
+  titleText.shadowColor = "#00AAFF";
+  titleText.shadowBlur = 20;
   titleTexture.addControl(titleText);
 
   // ============================================================
-  // BUTTONS (Logika Kode A + Sisipan Audio)
+  // TOMBOL DENGAN POSISI MANUAL (SIMETRIS)
   // ============================================================
 
-  // Tombol PC
-  const btnPC = new BABYLON.GUI.HolographicButton("startPC");
-  btnPC.text = "Mulai Perakitan PC";
-  panel.addControl(btnPC);
-  btnPC.onPointerUpObservable.add(() => {
-    playMenuClick(); // Audio
-    startMenuBGM(); // Audio
-    if (onStartPC) onStartPC();
-  });
+  // Kita simpan tombol dalam variabel agar bisa diatur posisinya
+  const btnPC = createCyberButton(
+    "btnPC",
+    "Mulai Rakit PC",
+    "DESKTOP WORKSTATION",
+    panel,
+    onStartPC
+  );
 
-  // Tombol Laptop
-  const btnLaptop = new BABYLON.GUI.HolographicButton("startLaptop");
-  btnLaptop.text = "Mulai Perakitan Laptop";
-  panel.addControl(btnLaptop);
-  btnLaptop.onPointerUpObservable.add(() => {
-    playMenuClick(); // Audio
-    startMenuBGM(); // Audio
-    if (onStartLaptop) onStartLaptop();
-  });
+  const btnLaptop = createCyberButton(
+    "btnLaptop",
+    "Mulai Rakit Laptop",
+    "PORTABLE DEVICE",
+    panel,
+    onStartLaptop
+  );
 
-  // Tombol Server
-  const btnServer = new BABYLON.GUI.HolographicButton("startServer");
-  btnServer.text = "Mulai Perakitan Server";
-  panel.addControl(btnServer);
-  btnServer.onPointerUpObservable.add(() => {
-    playMenuClick(); // Audio
-    startMenuBGM(); // Audio
-    if (onStartServer) onStartServer();
-  });
+  const btnServer = createCyberButton(
+    "btnServer",
+    "Mulai Rakit Server",
+    "ENTERPRISE RACK",
+    panel,
+    onStartServer
+  );
 
-  // ============================================================
-  // ENABLE VR LANGSUNG DI MAIN MENU (Dari Kode A)
-  // ============================================================
-  // Ini penting agar tombol kacamata VR muncul
+  // 2. ATUR KOORDINAT X (Agar jaraknya pasti sama)
+  // Karena lebar tombol sekitar 1.6, kita beri jarak antar pusat tombol sejauh 1.9 atau 2.0
+
+  btnPC.position = new BABYLON.Vector3(-1.5, 0, 0); // Geser Kiri
+  btnLaptop.position = new BABYLON.Vector3(0, 0, 0); // Tetap di Tengah
+  btnServer.position = new BABYLON.Vector3(1.5, 0, 0); // Geser Kanan
+
+  // ENABLE VR
   try {
     scene.createDefaultXRExperienceAsync({
       floorMeshes: [],
