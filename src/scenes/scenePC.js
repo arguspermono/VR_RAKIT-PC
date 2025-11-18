@@ -6,17 +6,15 @@ import { createHUD } from "../ui/uiButtons.js";
 import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
-// IMPORT BARU UNTUK DIALOG 3D
 import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createScenePC(engine, canvas) {
-  // 1. Load Base Scene (Meja & Lab sudah dimuat di sini)
+  // 1. Load Base Scene (Physics Environment sudah diset di sini)
   const scene = await createSceneBase(engine, canvas);
 
-  // --- 2. PANGGIL DIALOG TUTORIAL (DI MEJA) ---
+  // --- 2. PANGGIL DIALOG TUTORIAL ---
   create3DDialog(scene, "pc");
-  // --------------------------------------------
-
+  
   // 3. Load PC-specific assets
   const assetList = [
     { key: "case", file: "pc_case.glb" },
@@ -40,17 +38,32 @@ export async function createScenePC(engine, canvas) {
         scene
       );
       const root = res.meshes[0];
-      res.meshes.forEach((m) => (m.isPickable = true));
+      
+      // Setup Interaksi & Fisika Komponen
+      res.meshes.forEach((m) => {
+          m.isPickable = true;
+          m.checkCollisions = true;
+      });
+
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
+
+      // Tambahkan Fisika ke Root komponen
       if (scene.getPhysicsEngine() && root) {
         try {
+          // Mass 1 agar bisa jatuh/diambil, Mass 0 untuk Casing (opsional jika ingin casing diam)
+          // Gunakan BoxImpostor agar lebih stabil daripada MeshImpostor
+          const massValue = a.key === "case" ? 0 : 1; 
+          
+          // Kita reset posisi rotasi physics impostor agar sesuai
           root.physicsImpostor = new BABYLON.PhysicsImpostor(
             root,
             BABYLON.PhysicsImpostor.BoxImpostor,
-            { mass: a.key === "case" ? 0 : 1 },
+            { mass: massValue, friction: 0.5, restitution: 0.1 },
             scene
           );
-        } catch (e) {}
+        } catch (e) {
+            console.warn("Failed adding physics to", a.key, e);
+        }
       }
     } catch (e) {
       console.warn("Failed to load", a.file, e);
@@ -61,7 +74,7 @@ export async function createScenePC(engine, canvas) {
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
-  // detect slots, attach interactions, tutorial
+  // detect slots, interactions, tutorial
   scene.__app.slots = detectSlots(scene);
   try {
     attachInteractions(scene);
