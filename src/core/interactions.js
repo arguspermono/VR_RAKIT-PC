@@ -193,8 +193,8 @@ function showIdentityCard(mesh, data) {
 
   // 📌 Ukuran diperbesar (dari 220x110 → 320x160)
   const rect = new BABYLON.GUI.Rectangle();
-  rect.width = "320px";
-  rect.height = "160px";
+  rect.width = "400px";
+  rect.height = "200px";
   rect.cornerRadius = 14;
   rect.color = "#00d2ff";
   rect.thickness = 2.5;

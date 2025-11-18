@@ -62,9 +62,12 @@ export async function getComponentInsight(componentName) {
         You are a computer hardware expert.
         Identify this component from its filename: "${componentName}".
         
+        IMPORTANT:
+        - If the name is "console", interpret it as "server console" (administration console), NOT a game console.
+        - Always assume all components belong to computers, servers, or networking systems.
+
         Return a JSON object with 3 properties:
-        1. "role": A short English title, combining the acronym AND analogy. Format: "ACRONYM (Analogy)". 
-           (e.g., "CPU (The Brain)", "RAM (Workbench)", "PSU (The Heart)").
+        1. "role": A short English acronym or term (e.g., "CPU", "RAM", "GPU", "PSU", "I/O Controller"). Max 3 words.
         2. "desc": A short technical explanation in **Bahasa Indonesia** (1 sentence).
         3. "funFact": A unique interesting fact in **Bahasa Indonesia** (max 15 words).
         
