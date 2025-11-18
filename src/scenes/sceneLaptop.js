@@ -6,7 +6,6 @@ import { createHUD } from "../ui/uiButtons.js";
 import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
-// IMPORT BARU
 import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createSceneLaptop(engine, canvas) {
@@ -57,9 +56,19 @@ export async function createSceneLaptop(engine, canvas) {
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
+  // --- PERBAIKAN POSISI LAPTOP ---
   const casing = scene.__app.loaded["casing_laptop"];
   if (casing && casing.root) {
-    casing.root.position.y = 0.5; // naikkan laptop
+    // Cek apakah ada meja untuk referensi tinggi
+    if (scene.__app.table) {
+      const tableBounds = scene.__app.table.getBoundingInfo().boundingBox;
+      // Set posisi Y tepat di atas meja + sedikit offset (0.01) agar tidak tenggelam
+      casing.root.position.y = tableBounds.maximumWorld.y + 0.1;
+    } else {
+      // Fallback manual jika meja tidak terdeteksi (turunkan dari 0.5 jika masih terlalu tinggi)
+      casing.root.position.y = 0.01;
+    }
+
     casing.root.position.z -= 0.5; // maju sedikit agar tidak nabrak meja
   }
 

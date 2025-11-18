@@ -9,12 +9,12 @@ import { detectSlots } from "../core/slots.js";
 import { create3DDialog } from "../ui/tutorial3D.js";
 
 export async function createScenePC(engine, canvas) {
-  // 1. Load Base Scene (Physics Environment sudah diset di sini)
+  // 1. Load Base Scene
   const scene = await createSceneBase(engine, canvas);
 
   // --- 2. PANGGIL DIALOG TUTORIAL ---
   create3DDialog(scene, "pc");
-  
+
   // 3. Load PC-specific assets
   const assetList = [
     { key: "case", file: "pc_case.glb" },
@@ -38,23 +38,19 @@ export async function createScenePC(engine, canvas) {
         scene
       );
       const root = res.meshes[0];
-      
-      // Setup Interaksi & Fisika Komponen
+
       res.meshes.forEach((m) => {
-          m.isPickable = true;
-          m.checkCollisions = true;
+        m.isPickable = true;
+        m.checkCollisions = true;
       });
 
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
 
-      // Tambahkan Fisika ke Root komponen
       if (scene.getPhysicsEngine() && root) {
         try {
-          // Mass 1 agar bisa jatuh/diambil, Mass 0 untuk Casing (opsional jika ingin casing diam)
-          // Gunakan BoxImpostor agar lebih stabil daripada MeshImpostor
-          const massValue = a.key === "case" ? 0 : 1; 
-          
-          // Kita reset posisi rotasi physics impostor agar sesuai
+          // Casing tetap Mass 0 (Statis)
+          const massValue = a.key === "case" ? 0 : 1;
+
           root.physicsImpostor = new BABYLON.PhysicsImpostor(
             root,
             BABYLON.PhysicsImpostor.BoxImpostor,
@@ -62,7 +58,7 @@ export async function createScenePC(engine, canvas) {
             scene
           );
         } catch (e) {
-            console.warn("Failed adding physics to", a.key, e);
+          console.warn("Failed adding physics to", a.key, e);
         }
       }
     } catch (e) {
@@ -73,6 +69,16 @@ export async function createScenePC(engine, canvas) {
   applyComponentScale(scene.__app.loaded);
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
+
+  // --- PERBAIKAN POSISI CASING PC ---
+  const pcCase = scene.__app.loaded["case"];
+  if (pcCase && pcCase.root && scene.__app.table) {
+    // Ambil tinggi permukaan meja
+    const tableBounds = scene.__app.table.getBoundingInfo().boundingBox;
+
+    // UPDATE: Naikkan sedikit (+ 0.02) agar tidak tenggelam
+    pcCase.root.position.y = tableBounds.maximumWorld.y + 0.02;
+  }
 
   // detect slots, interactions, tutorial
   scene.__app.slots = detectSlots(scene);

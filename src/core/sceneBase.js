@@ -91,7 +91,7 @@ export async function createSceneBase(engine, canvas) {
     );
 
     tableCollider.position = center.clone();
-    tableCollider.position.y += 0.06;
+    tableCollider.position.y += 0.1;
 
     const debugMat = new BABYLON.StandardMaterial("debugMatTable", scene);
     debugMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
