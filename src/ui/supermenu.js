@@ -98,7 +98,7 @@ function createModal({ scene, title, content }) {
   // ================= BACKDROP =================
   const backdrop = BABYLON.MeshBuilder.CreatePlane("modalBackdrop", {
     width: 2,
-    height: 2.2
+    height: 2.3
   }, scene);
   backdrop.position = new BABYLON.Vector3(0, 1.0, 5.6);
   backdrop.isPickable = true;
@@ -111,7 +111,7 @@ function createModal({ scene, title, content }) {
   // ================= PANEL =================
   const panel = BABYLON.MeshBuilder.CreatePlane("modalPanel", {
     width: 2.0,
-    height: 1.6
+    height: 2
   }, scene);
   panel.position = new BABYLON.Vector3(0, 1.0, 5.5);
   panel.isPickable = true;
@@ -155,7 +155,7 @@ function createModal({ scene, title, content }) {
   // --- BODY ---
   const body = new BABYLON.GUI.TextBlock();
   body.text = content;
-  body.fontSize = 44;
+  body.fontSize = 35;
   body.color = "#FFFFAA";
   body.width = "80%";
   body.textWrapping = true;
@@ -323,6 +323,8 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
       content:
         "Dosen pembimbing: \n" + 
         "Bapak Sritrusta Sukaridhoto, ST., Ph.D.\n\n" +
+        "Asisten dosen pembimbing: \n" + 
+        "Faris Saifullah D4 IT RPL\n\n" +
         "Didukung oleh Politeknik Elektronika Negeri Surabaya, Jurusan Teknologi Rekayasa Multimedia.\n\n" +
         "Tim pengembang Kelompok 2:\n" +
         "M. Rafif Nuha Daniswara\n" +
