@@ -51,83 +51,78 @@ function startMenuBGM() {
 // ============================================================
 // 🛠️ HELPER: CREATE FUTURISTIC BUTTON (UPDATED SIZE)
 // ============================================================
-function createCyberButton(name, mainText, subText, panel, onClick) {
+function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) {
   const btn = new BABYLON.GUI.HolographicButton(name);
   panel.addControl(btn);
 
-  // 1. UPDATE: Perlebar tombol (Scaling X) agar teks panjang muat
-  // Sebelumnya 1.1 -> Sekarang 1.6
   btn.scaling = new BABYLON.Vector3(1.2, 0.8, 1);
   btn.cornerRadius = 5;
 
-  // Material Belakang (Dark Glass Look)
-  if (btn.backMaterial) {
-    btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1);
-    btn.backMaterial.alpha = 0.8;
+  // Material Belakang (Dark Glass Look) 
+  if (btn.backMaterial) { 
+    btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1); 
+    btn.backMaterial.alpha = 0.8; 
   }
 
-  // Isi Tombol
   const stack = new BABYLON.GUI.StackPanel();
   stack.isVertical = true;
   stack.width = "100%";
+  stack.paddingTop = "20px";
+  stack.paddingBottom = "20px";
+  stack.paddingLeft = "40px";
+  stack.paddingRight = "40px";
   btn.content = stack;
 
-  // Teks Utama (Besar & Neon)
+  // MAIN TITLE
   const title = new BABYLON.GUI.TextBlock();
   title.text = mainText.toUpperCase();
-  title.color = "#00FFFF"; // Cyan Neon
-
-  // 2. UPDATE: Kecilkan Font Size
-  // Sebelumnya 34 -> Sekarang 22 (Supaya tidak kepotong)
+  title.color = "#00FFFF";
   title.fontSize = 22;
   title.fontStyle = "bold";
-
-  // Height diatur agar teks tidak mepet
   title.height = "30px";
-
   title.shadowColor = "#008888";
   title.shadowBlur = 5;
   stack.addControl(title);
 
-  // Teks Sub (Kecil & Techy)
+  // 🔥 NEW: MAIN DEVICE (PC / LAPTOP / SERVER)
+  const deviceText = new BABYLON.GUI.TextBlock();
+  deviceText.text = mainDevice.toUpperCase();
+  deviceText.color = "#00FFFF";  // sama neon cyan
+  deviceText.fontSize = 18;
+  deviceText.height = "24px";
+  deviceText.shadowColor = "#008888";
+  deviceText.shadowBlur = 6;
+  stack.addControl(deviceText);
+
+  // SUBTEXT
   const subtitle = new BABYLON.GUI.TextBlock();
   subtitle.text = `>> ${subText} <<`;
   subtitle.color = "#AAAAAA";
-  subtitle.fontSize = 12; // Kecilkan sedikit juga (sebelumnya 14)
+  subtitle.fontSize = 12;
   subtitle.height = "20px";
   stack.addControl(subtitle);
 
-  // Event Handler
-  btn.onPointerUpObservable.add(() => {
-    playMenuClick();
-    startMenuBGM();
-    // Animasi klik
-    const anim = BABYLON.Animation.CreateAndStartAnimation(
-      "btnClick",
-      btn,
-      "scaling",
-      60,
-      10,
-      btn.scaling,
-      new BABYLON.Vector3(1.7, 0.9, 1.2),
-      BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-    );
-
-    if (onClick) onClick();
-  });
-
-  // Efek Hover
+  // Event dan hover...
   btn.onPointerEnterObservable.add(() => {
     title.color = "#FFFFFF";
+    deviceText.color = "#FFFFFF";    // ikut hover
     subtitle.color = "#00FFFF";
   });
+
   btn.onPointerOutObservable.add(() => {
     title.color = "#00FFFF";
+    deviceText.color = "#00FFFF";    // kembali ke cyan
     subtitle.color = "#AAAAAA";
+  });
+  
+  btn.onPointerUpObservable.add(() => {
+    playClick();
+    if (onClick) onClick();
   });
 
   return btn;
 }
+
 
 // ============================================================
 // MAIN MENU (LAYOUT MANUAL AGAR SIMETRIS)
@@ -199,7 +194,8 @@ export function createMainMenu({
   // Kita simpan tombol dalam variabel agar bisa diatur posisinya
   const btnPC = createCyberButton(
     "btnPC",
-    "Mulai Rakit PC",
+    "Mulai Rakit",
+    "PC",
     "DESKTOP WORKSTATION",
     panel,
     onStartPC
@@ -207,7 +203,8 @@ export function createMainMenu({
 
   const btnLaptop = createCyberButton(
     "btnLaptop",
-    "Mulai Rakit Laptop",
+    "Mulai Rakit",
+    "Laptop",
     "PORTABLE DEVICE",
     panel,
     onStartLaptop
@@ -215,7 +212,8 @@ export function createMainMenu({
 
   const btnServer = createCyberButton(
     "btnServer",
-    "Mulai Rakit Server",
+    "Mulai Rakit",
+    "Server",
     "ENTERPRISE RACK",
     panel,
     onStartServer
