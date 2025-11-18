@@ -1,0 +1,24 @@
+{
+  "name": "vr_rakit-pc",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arguspermono/VR_RAKIT-PC.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arguspermono/VR_RAKIT-PC/issues"
+  },
+  "homepage": "https://github.com/arguspermono/VR_RAKIT-PC#readme",
+  "description": "",
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}
