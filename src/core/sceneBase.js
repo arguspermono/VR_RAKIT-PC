@@ -2,6 +2,10 @@
 import { setupColliders } from "./collisions.js";
 import { setupControls } from "./controls.js";
 
+// VARIABEL GLOBAL MODULE (Singleton)
+// Ini akan menyimpan instance Ammo agar tidak perlu loading ulang saat reset
+let ammoInstance = null;
+
 export async function createSceneBase(engine, canvas) {
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
@@ -23,16 +27,33 @@ export async function createSceneBase(engine, canvas) {
 
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
-  // PHYSICS
-  if (typeof Ammo === "function") {
-    try {
-      await Ammo();
-      const plugin = new BABYLON.AmmoJSPlugin(true, Ammo);
+  // --- PERBAIKAN PHYSICS INIT (SINGLETON) ---
+  // Cek apakah script Ammo sudah ada
+  if (typeof Ammo !== "undefined") {
+    // Jika instance belum ada, kita init. Jika sudah ada (hasil reset sebelumnya), LEWATI init.
+    if (!ammoInstance) {
+      if (typeof Ammo === "function") {
+        try {
+          // Panggil factory function sekali saja seumur hidup app
+          ammoInstance = await Ammo();
+          console.log("Ammo.js initialized for the first time.");
+        } catch (e) {
+          console.warn("Ammo init failed", e);
+        }
+      } else {
+        // Fallback jika Ammo sudah berbentuk objek
+        ammoInstance = Ammo;
+      }
+    }
+
+    // Aktifkan physics menggunakan instance yang sudah disimpan
+    if (ammoInstance) {
+      const plugin = new BABYLON.AmmoJSPlugin(true, ammoInstance);
       scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), plugin);
-    } catch (e) {
-      console.warn("Ammo init failed", e);
+      console.log("Physics Engine enabled on new scene.");
     }
   }
+  // ------------------------------------------
 
   // LOAD ENVIRONMENT
   const lab = await BABYLON.SceneLoader.ImportMeshAsync(
@@ -55,7 +76,7 @@ export async function createSceneBase(engine, canvas) {
       }
     }) || lab.meshes.find((m) => m.name.toLowerCase().includes("desk"));
 
-  // --- 1. COLLIDER MEJA (HIDDEN) ---
+  // --- COLLIDER MEJA (HIDDEN) ---
   if (tableMesh && scene.getPhysicsEngine()) {
     const bounds = tableMesh.getBoundingInfo().boundingBox;
     const width = bounds.maximumWorld.x - bounds.minimumWorld.x;
@@ -65,23 +86,18 @@ export async function createSceneBase(engine, canvas) {
 
     const tableCollider = BABYLON.MeshBuilder.CreateBox(
       "DebugTableCollider",
-      {
-        width: width,
-        height: height,
-        depth: depth,
-      },
+      { width, height, depth },
       scene
     );
 
     tableCollider.position = center.clone();
-    tableCollider.position.y += 0.06; // Offset tetap dipertahankan
+    tableCollider.position.y += 0.06;
 
     const debugMat = new BABYLON.StandardMaterial("debugMatTable", scene);
     debugMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
     debugMat.alpha = 0.5;
     tableCollider.material = debugMat;
 
-    // PERUBAHAN: Sembunyikan kotak
     tableCollider.isVisible = false;
 
     tableCollider.physicsImpostor = new BABYLON.PhysicsImpostor(
@@ -92,7 +108,7 @@ export async function createSceneBase(engine, canvas) {
     );
   }
 
-  // --- 2. COLLIDER LANTAI (HIDDEN) ---
+  // --- COLLIDER LANTAI (DIPERLUAS) ---
   const floorMesh = lab.meshes.find(
     (m) =>
       m.name.toLowerCase().includes("floor") ||
@@ -102,19 +118,20 @@ export async function createSceneBase(engine, canvas) {
 
   if (floorMesh && scene.getPhysicsEngine()) {
     const bounds = floorMesh.getBoundingInfo().boundingBox;
-    const width = bounds.maximumWorld.x - bounds.minimumWorld.x;
+
+    // Paksa ukuran besar (100m) agar tidak jatuh ke void
+    const rawWidth = bounds.maximumWorld.x - bounds.minimumWorld.x;
+    const rawDepth = bounds.maximumWorld.z - bounds.minimumWorld.z;
+    const width = rawWidth < 100 ? 100 : rawWidth;
+    const depth = rawDepth < 100 ? 100 : rawDepth;
+
     const rawHeight = bounds.maximumWorld.y - bounds.minimumWorld.y;
     const height = rawHeight < 0.05 ? 0.05 : rawHeight;
-    const depth = bounds.maximumWorld.z - bounds.minimumWorld.z;
     const center = bounds.centerWorld;
 
     const floorCollider = BABYLON.MeshBuilder.CreateBox(
       "DebugFloorCollider",
-      {
-        width: width,
-        height: height,
-        depth: depth,
-      },
+      { width, height, depth },
       scene
     );
 
@@ -128,7 +145,6 @@ export async function createSceneBase(engine, canvas) {
     floorDebugMat.alpha = 0.5;
     floorCollider.material = floorDebugMat;
 
-    // PERUBAHAN: Sembunyikan kotak
     floorCollider.isVisible = false;
 
     floorCollider.physicsImpostor = new BABYLON.PhysicsImpostor(
