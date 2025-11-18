@@ -115,8 +115,8 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
     subtitle.color = "#AAAAAA";
   });
   
-  btn.onPointerUpObservable.add(() => {
-    playClick();
+  btn.onPointerDownObservable.add(() => {
+    playMenuClick();
     if (onClick) onClick();
   });
 
