@@ -40,7 +40,6 @@ function startBGM() {
   } catch (e) {}
 }
 
-
 // ============================================================
 // 🪟 INIT GLOBAL CLOSE BUTTON (Hanya 1 tombol)
 // ============================================================
@@ -96,10 +95,14 @@ function createModal({ scene, title, content }) {
   }
 
   // ================= BACKDROP =================
-  const backdrop = BABYLON.MeshBuilder.CreatePlane("modalBackdrop", {
-    width: 2,
-    height: 2.3
-  }, scene);
+  const backdrop = BABYLON.MeshBuilder.CreatePlane(
+    "modalBackdrop",
+    {
+      width: 2,
+      height: 2.3,
+    },
+    scene
+  );
   backdrop.position = new BABYLON.Vector3(0, 1.0, 5.6);
   backdrop.isPickable = true;
 
@@ -109,10 +112,14 @@ function createModal({ scene, title, content }) {
   backdrop.material = backdropMat;
 
   // ================= PANEL =================
-  const panel = BABYLON.MeshBuilder.CreatePlane("modalPanel", {
-    width: 2.0,
-    height: 2
-  }, scene);
+  const panel = BABYLON.MeshBuilder.CreatePlane(
+    "modalPanel",
+    {
+      width: 2.0,
+      height: 2,
+    },
+    scene
+  );
   panel.position = new BABYLON.Vector3(0, 1.0, 5.5);
   panel.isPickable = true;
 
@@ -125,7 +132,12 @@ function createModal({ scene, title, content }) {
   panel.material = mat;
 
   // ================= UI TEXT =================
-  const tex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(panel, 1024, 1024, true);
+  const tex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
+    panel,
+    1024,
+    1024,
+    true
+  );
   tex.rootContainer.zIndex = 10;
 
   const container = new BABYLON.GUI.Rectangle();
@@ -149,7 +161,8 @@ function createModal({ scene, title, content }) {
   titleText.shadowColor = "#00FFFF";
   titleText.outlineColor = "#000000";
   titleText.outlineWidth = 3;
-  titleText.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+  titleText.textHorizontalAlignment =
+    BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
   stack.addControl(titleText);
 
   // --- BODY ---
@@ -165,12 +178,17 @@ function createModal({ scene, title, content }) {
   body.shadowColor = "#000000";
   body.outlineColor = "#333333";
   body.outlineWidth = 1.5;
-  body.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+  body.textHorizontalAlignment =
+    BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
   stack.addControl(body);
 
   // ================= TOMBOL CLOSE GLOBAL =================
   if (closeBtn3D) {
-    closeBtn3D.position = new BABYLON.Vector3(panel.position.x, panel.position.y - 1.2, panel.position.z + 0.05);
+    closeBtn3D.position = new BABYLON.Vector3(
+      panel.position.x,
+      panel.position.y - 1.2,
+      panel.position.z + 0.05
+    );
     closeBtn3D.isVisible = true;
   }
 
@@ -179,7 +197,6 @@ function createModal({ scene, title, content }) {
 
   return activeModal;
 }
-
 
 // =====================================================================
 // 🛠️ BUTTON CREATOR (matching main menu style)
@@ -207,8 +224,12 @@ function createSuperButton(name, label, panel, onClick) {
 
   btn.content = txt;
 
-  btn.onPointerEnterObservable.add(() => { txt.color = "#FFFFFF"; });
-  btn.onPointerOutObservable.add(() => { txt.color = "#00FFFF"; });
+  btn.onPointerEnterObservable.add(() => {
+    txt.color = "#FFFFFF";
+  });
+  btn.onPointerOutObservable.add(() => {
+    txt.color = "#00FFFF";
+  });
 
   // ⬅ PERBAIKAN: klik langsung tanpa perlu pointer keluar
   btn.onPointerDownObservable.add(() => {
@@ -219,18 +240,15 @@ function createSuperButton(name, label, panel, onClick) {
   return btn;
 }
 
-
 // =====================================================================
-//  SUPER MENU (Full Ready)
+//  SUPER MENU (Full Ready) - PERBAIKAN UNTUK XR/VR
 // =====================================================================
 export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
-
   initSuperAudio();
-  initCloseBtn(scene);
+  initCloseBtn(scene); // --- 1. Persiapan Container/Manager --- // Tetap buat manager di sini
 
-  const manager = new BABYLON.GUI.GUI3DManager(scene);
+  const manager = new BABYLON.GUI.GUI3DManager(scene); // ───── LOAD ENVIRONMENT ─────────
 
-  // ───── LOAD ENVIRONMENT ─────────
   BABYLON.SceneLoader.ImportMesh(
     "",
     "./assets/",
@@ -248,19 +266,20 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
 
       startBGM();
     }
-  );
+  ); // ───── PANEL BUTTON 3D ─────────
 
-  // ───── PANEL BUTTON 3D ─────────
   const panel = new BABYLON.GUI.Container3D();
   manager.addControl(panel);
-  panel.position = new BABYLON.Vector3(0, 1.1, 6);
+  panel.position = new BABYLON.Vector3(0, 1.1, 6); // ───── BACK GLASS & TITLE (Tidak perlu diubah) ─────────
 
-
-  // ───── BACK GLASS ─────────
-  const glass = BABYLON.MeshBuilder.CreatePlane("glassBack", {
-    width: 3.8,
-    height: 3
-  }, scene);
+  const glass = BABYLON.MeshBuilder.CreatePlane(
+    "glassBack",
+    {
+      width: 3.8,
+      height: 3,
+    },
+    scene
+  );
   glass.position = new BABYLON.Vector3(0, 1.4, 5.95);
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
@@ -276,12 +295,14 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
 
   glass.material = mat;
 
-
-  // ───── TITLE TEXT ─────────
-  const titlePlane = BABYLON.MeshBuilder.CreatePlane("superTitle", {
-    width: 4,
-    height: 1.0
-  }, scene);
+  const titlePlane = BABYLON.MeshBuilder.CreatePlane(
+    "superTitle",
+    {
+      width: 4,
+      height: 1.0,
+    },
+    scene
+  );
   titlePlane.position = new BABYLON.Vector3(0, 2.4, 5);
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
@@ -299,10 +320,8 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
   titleText.fontStyle = "bold";
   titleText.shadowColor = "#00AAFF";
   titleText.shadowBlur = 20;
-  titleTex.addControl(titleText);
+  titleTex.addControl(titleText); // ───── BUTTONS ─────────
 
-
-  // ───── BUTTONS ─────────
   const btnStart = createSuperButton("btnStart", "Start", panel, onStart);
   btnStart.position = new BABYLON.Vector3(0, 0.8, 0);
 
@@ -311,7 +330,7 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
       scene,
       title: "About",
       content:
-        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah. Melalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik, sehingga sangat efektif untuk pembelajaran kejuruan.\n"
+        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah. Melalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik, sehingga sangat efektif untuk pembelajaran kejuruan.\n",
     });
   });
   btnAbout.position = new BABYLON.Vector3(0, -0, 0);
@@ -321,9 +340,9 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
       scene,
       title: "Credits",
       content:
-        "Dosen pembimbing: \n" + 
+        "Dosen pembimbing: \n" +
         "Bapak Sritrusta Sukaridhoto, ST., Ph.D.\n\n" +
-        "Asisten dosen pembimbing: \n" + 
+        "Asisten dosen pembimbing: \n" +
         "Faris Saifullah D4 IT RPL\n\n" +
         "Didukung oleh Politeknik Elektronika Negeri Surabaya, Jurusan Teknologi Rekayasa Multimedia.\n\n" +
         "Tim pengembang Kelompok 2:\n" +
@@ -333,18 +352,33 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
         "Arya Bagus Permono\n" +
         "Erlangga Rahmansyah \n" +
         "Hernawan Aprilianda Hamzah \n\n" +
-        "Harapan kami Craftlab VR dapat meningkatkan pengalaman praktikum dan pembelajaran di pendidikan kejuruan."        
+        "Harapan kami Craftlab VR dapat meningkatkan pengalaman praktikum dan pembelajaran di pendidikan kejuruan.",
     });
   });
-  btnCredits.position = new BABYLON.Vector3(0, -0.8, 0);
+  btnCredits.position = new BABYLON.Vector3(0, -0.8, 0); // --- 2. Inisialisasi XR & Integrasi Manager 3D ---
 
-
-  // XR optional
   try {
-    scene.createDefaultXRExperienceAsync({
-      disableTeleportation: true
-    });
-  } catch (e) {}
+    // Tunggu hingga pengalaman XR siap
+    scene
+      .createDefaultXRExperienceAsync({
+        disableTeleportation: true,
+      })
+      .then((xrExperience) => {
+        // Saat XR siap, set manager 3D untuk menggunakan input XR
+        if (xrExperience.pointerSelection) {
+          // Menggunakan ray cast dari controller sebagai pointer
+          manager.utilityLayer.utilityLayerScene.activeCamera =
+            xrExperience.pointerSelection.attachToMesh.camera;
+        } // Memastikan interaksi pointer selection aktif
+        xrExperience.input.onControllerAddedObservable.add((controller) => {
+          // Asumsi controller memiliki ray/pointer, GUI3DManager akan otomatis menangkap ini
+          // asalkan controller tersebut memiliki 'laserPointer' atau 'utilityLayerScene'
+          // Sudah ditangani oleh defaultXRExperience.
+        });
+      });
+  } catch (e) {
+    // Tangani error jika gagal membuat XR experience
+  }
 
   return panel;
 }
