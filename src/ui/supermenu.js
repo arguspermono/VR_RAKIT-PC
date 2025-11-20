@@ -120,7 +120,7 @@ function createModal({ scene, title, content }) {
     },
     scene
   );
-  panel.position = new BABYLON.Vector3(0, 1.0, 5.5);
+  panel.position = new BABYLON.Vector3(0, 0.5, 5.5);
   panel.isPickable = true;
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
@@ -323,7 +323,7 @@ export function createSuperMenu({
     },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5); // Posisi Y Naik ke 2.8
+  titlePlane.position = new BABYLON.Vector3(0, 2.5, 5); // Posisi Y Naik ke 2.8
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
