@@ -1,6 +1,6 @@
 // src/app.js
 import { createMainMenu } from "./ui/mainmenu.js";
-import { createSuperMenu } from "./ui/supermenu.js";   // ← tambahkan ini
+import { createSuperMenu } from "./ui/supermenu.js"; // ← tambahkan ini
 
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true);
@@ -15,7 +15,11 @@ export async function resetScene() {
   console.log("Reset scene:", currentKind);
 
   if (currentScene) {
-    try { currentScene.dispose(); } catch (e) { console.warn(e); }
+    try {
+      currentScene.dispose();
+    } catch (e) {
+      console.warn(e);
+    }
     currentScene = null;
   }
 
@@ -42,7 +46,9 @@ async function startScene(kind) {
   currentKind = kind;
 
   if (menuScene) {
-    try { menuScene.dispose(); } catch (e) {}
+    try {
+      menuScene.dispose();
+    } catch (e) {}
     menuScene = null;
   }
 
@@ -92,9 +98,10 @@ function showSuperMenu() {
   // panggil UI SuperMenu
   createSuperMenu({
     scene,
-    onStart: () => {       // tombol "Start"
+    onStart: () => {
+      // tombol "Start"
       scene.dispose();
-      showMenu();          // masuk ke main menu lama
+      showMenu(); // masuk ke main menu lama
     },
     onAbout: () => alert("About page"),
     onCredits: () => alert("Credits page"),
@@ -154,6 +161,6 @@ function showMenu() {
 //  MULAI DARI SUPER MENU
 // ──────────────────────────────────────────────
 
-showSuperMenu();   // ← sebelumnya showMenu()
+showSuperMenu(); // ← sebelumnya showMenu()
 
 window.addEventListener("resize", () => engine.resize());

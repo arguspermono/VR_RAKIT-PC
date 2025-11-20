@@ -3,7 +3,6 @@ import { createSceneBase } from "../core/sceneBase.js";
 import { attachInteractions } from "../core/interactions.js";
 import { createTutorialManager } from "../core/tutorialManager.js";
 import { createHUD } from "../ui/uiButtons.js";
-import { resetScene } from "../app.js";
 import {
   applyComponentScale,
   autoPlacePartsOnTable,
@@ -12,13 +11,11 @@ import {
 import { detectSlots } from "../core/slots.js";
 import { create3DDialog } from "../ui/tutorial3D.js";
 
-export async function createSceneServer(engine, canvas) {
+// MENERIMA PARAMETER onExitApp
+export async function createSceneServer(engine, canvas, onExitApp) {
   const scene = await createSceneBase(engine, canvas);
-
-  // --- PANGGIL DIALOG TUTORIAL ---
   create3DDialog(scene, "server");
 
-  // list of server/rack assets
   const assetList = [
     { key: "server_rack", file: "server_rack.glb" },
     { key: "misc", file: "misc.glb" },
@@ -30,7 +27,6 @@ export async function createSceneServer(engine, canvas) {
 
   scene.__app.loaded = scene.__app.loaded || {};
 
-  // 1. LOAD ASSETS (TANPA FISIKA DULU)
   for (const a of assetList) {
     try {
       const res = await BABYLON.SceneLoader.ImportMeshAsync(
@@ -41,74 +37,98 @@ export async function createSceneServer(engine, canvas) {
       );
       const root = res.meshes[0] || null;
       res.meshes.forEach((m) => (m.isPickable = true));
-
-      // Simpan data aset
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
-
-      // HAPUS BLOK PHYSICS DI SINI -- Kita pasang nanti setelah posisi pas
     } catch (e) {
-      console.warn("Failed to load", a.file, e);
+      console.warn(e);
     }
   }
 
-  // 2. ATUR POSISI VISUAL (SCALE & PLACE)
   applyComponentScale(scene.__app.loaded);
   placeServerRackAndItems(scene.__app.table, scene.__app.loaded);
-
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
-  // --- PERBAIKAN POSISI SERVER RACK ---
   const rack = scene.__app.loaded["server_rack"];
   if (rack && rack.root) {
-    // Naikkan Server Rack (visual)
-    rack.root.position.y = 0.2; // 20cm dari lantai
+    rack.root.position.y = 0.2;
   }
 
-  // 3. BARU PASANG FISIKA (SETELAH POSISI FINAL)
   if (scene.getPhysicsEngine()) {
     Object.keys(scene.__app.loaded).forEach((key) => {
       const item = scene.__app.loaded[key];
       if (item.root) {
         try {
-          // Tentukan massa: Rack diam (0), komponen lain jatuh (1)
           const massValue = key === "server_rack" ? 0 : 1;
-
           item.root.physicsImpostor = new BABYLON.PhysicsImpostor(
             item.root,
             BABYLON.PhysicsImpostor.BoxImpostor,
             { mass: massValue, friction: 0.5, restitution: 0.1 },
             scene
           );
-        } catch (e) {
-          console.warn("Physics fail for", key);
-        }
+        } catch (e) {}
       }
     });
   }
 
-  // detect slots
   scene.__app.slots = detectSlots(scene);
-
-  // interactions + tutorial
   try {
     attachInteractions(scene);
-  } catch (e) {
-    console.warn(e);
-  }
-
+  } catch (e) {}
   try {
     const order = ["misc", "nas", "ups", "console", "server"];
     scene.__tutorial = createTutorialManager(scene, order);
-  } catch (e) {
-    console.warn("createTutorialManager failed", e);
+  } catch (e) {}
+
+  // --- LOGIC RESET BARANG (GENERIC) ---
+  const initialStates = [];
+  function saveInitialStates() {
+    Object.values(scene.__app.loaded).forEach((item) => {
+      if (item.root) {
+        initialStates.push({
+          mesh: item.root,
+          position: item.root.position.clone(),
+          rotation: item.root.rotationQuaternion
+            ? item.root.rotationQuaternion.clone()
+            : item.root.rotation.clone(),
+        });
+      }
+    });
   }
 
-  // HUD
+  function handleResetObjects() {
+    console.log("🔄 Resetting objects...");
+    initialStates.forEach((state) => {
+      const mesh = state.mesh;
+      if (!mesh) return;
+
+      mesh.setParent(null); // PENTING: LEPAS PARENT
+
+      if (mesh.physicsImpostor) {
+        mesh.physicsImpostor.setLinearVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.sleep();
+        setTimeout(() => mesh.physicsImpostor.wakeUp(), 50);
+      }
+
+      mesh.position.copyFrom(state.position);
+      if (mesh.rotationQuaternion)
+        mesh.rotationQuaternion.copyFrom(state.rotation);
+      else mesh.rotation.copyFrom(state.rotation);
+
+      mesh.computeWorldMatrix(true);
+    });
+  }
+
+  saveInitialStates();
+
+  // --- HUD ---
   createHUD(
     scene,
-    () => window.location.reload(),
-    () => resetScene()
+    () => {
+      if (onExitApp) onExitApp();
+      else window.location.reload();
+    },
+    handleResetObjects
   );
 
   return scene;

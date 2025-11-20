@@ -367,7 +367,7 @@ export function createSuperMenu({
             "2. INTERAKSI OBJEK:\n" +
             "   - Arahkan tangan ke komponen.\n" +
             "   - Tekan tombol TRIGGER/GRIP untuk mengambil (Grab).\n\n" +
-            "3. Alur PERAKITAN:\n" +
+            "3. ALUR PERAKITAN:\n" +
             "   - Bawa komponen ke Casing.\n" +
             "   - Cari area hijau (Snap Zone).\n" +
             "   - Lepas tombol untuk memasang.\n\n" +
