@@ -3,19 +3,15 @@ import { createSceneBase } from "../core/sceneBase.js";
 import { attachInteractions } from "../core/interactions.js";
 import { createTutorialManager } from "../core/tutorialManager.js";
 import { createHUD } from "../ui/uiButtons.js";
-import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
 import { create3DDialog } from "../ui/tutorial3D.js";
 
-export async function createSceneLaptop(engine, canvas) {
+// MENERIMA PARAMETER onExitApp
+export async function createSceneLaptop(engine, canvas, onExitApp) {
   const scene = await createSceneBase(engine, canvas);
-
-  // --- PANGGIL DIALOG TUTORIAL ---
   create3DDialog(scene, "laptop");
-  // -------------------------------
 
-  // load laptop-specific assets
   const assetList = [
     { key: "casing_laptop", file: "casing_laptop.glb" },
     { key: "ram1_laptop", file: "ram1_lap.glb" },
@@ -38,17 +34,15 @@ export async function createSceneLaptop(engine, canvas) {
       res.meshes.forEach((m) => (m.isPickable = true));
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
       if (scene.getPhysicsEngine() && root) {
-        try {
-          root.physicsImpostor = new BABYLON.PhysicsImpostor(
-            root,
-            BABYLON.PhysicsImpostor.BoxImpostor,
-            { mass: a.key === "casing_laptop" ? 0 : 1 },
-            scene
-          );
-        } catch (e) {}
+        root.physicsImpostor = new BABYLON.PhysicsImpostor(
+          root,
+          BABYLON.PhysicsImpostor.BoxImpostor,
+          { mass: a.key === "casing_laptop" ? 0 : 1 },
+          scene
+        );
       }
     } catch (e) {
-      console.warn("Failed to load", a.file, e);
+      console.warn(e);
     }
   }
 
@@ -56,32 +50,21 @@ export async function createSceneLaptop(engine, canvas) {
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
-  // --- PERBAIKAN POSISI LAPTOP ---
   const casing = scene.__app.loaded["casing_laptop"];
   if (casing && casing.root) {
-    // Cek apakah ada meja untuk referensi tinggi
     if (scene.__app.table) {
       const tableBounds = scene.__app.table.getBoundingInfo().boundingBox;
-      // Set posisi Y tepat di atas meja + sedikit offset (0.01) agar tidak tenggelam
       casing.root.position.y = tableBounds.maximumWorld.y + 0.1;
     } else {
-      // Fallback manual jika meja tidak terdeteksi (turunkan dari 0.5 jika masih terlalu tinggi)
       casing.root.position.y = 0.01;
     }
-
-    casing.root.position.z -= 0.5; // maju sedikit agar tidak nabrak meja
+    casing.root.position.z -= 0.5;
   }
 
-  // detect slots (uses casing_laptop meshes)
   scene.__app.slots = detectSlots(scene);
-
   try {
     attachInteractions(scene);
-  } catch (e) {
-    console.warn(e);
-  }
-
-  // laptop tutorial order (custom)
+  } catch (e) {}
   try {
     const order = [
       "ram1_laptop",
@@ -90,15 +73,58 @@ export async function createSceneLaptop(engine, canvas) {
       "battery_laptop",
     ];
     scene.__tutorial = createTutorialManager(scene, order);
-  } catch (e) {
-    console.warn("createTutorialManager failed", e);
+  } catch (e) {}
+
+  // --- LOGIC RESET BARANG (GENERIC) ---
+  const initialStates = [];
+  function saveInitialStates() {
+    Object.values(scene.__app.loaded).forEach((item) => {
+      if (item.root) {
+        initialStates.push({
+          mesh: item.root,
+          position: item.root.position.clone(),
+          rotation: item.root.rotationQuaternion
+            ? item.root.rotationQuaternion.clone()
+            : item.root.rotation.clone(),
+        });
+      }
+    });
   }
 
-  // HUD
+  function handleResetObjects() {
+    console.log("🔄 Resetting objects...");
+    initialStates.forEach((state) => {
+      const mesh = state.mesh;
+      if (!mesh) return;
+
+      mesh.setParent(null); // PENTING: LEPAS PARENT
+
+      if (mesh.physicsImpostor) {
+        mesh.physicsImpostor.setLinearVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.sleep();
+        setTimeout(() => mesh.physicsImpostor.wakeUp(), 50);
+      }
+
+      mesh.position.copyFrom(state.position);
+      if (mesh.rotationQuaternion)
+        mesh.rotationQuaternion.copyFrom(state.rotation);
+      else mesh.rotation.copyFrom(state.rotation);
+
+      mesh.computeWorldMatrix(true);
+    });
+  }
+
+  saveInitialStates();
+
+  // --- HUD ---
   createHUD(
     scene,
-    () => window.location.reload(),
-    () => resetScene()
+    () => {
+      if (onExitApp) onExitApp();
+      else window.location.reload();
+    },
+    handleResetObjects
   );
 
   return scene;

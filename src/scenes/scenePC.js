@@ -3,19 +3,15 @@ import { createSceneBase } from "../core/sceneBase.js";
 import { attachInteractions } from "../core/interactions.js";
 import { createTutorialManager } from "../core/tutorialManager.js";
 import { createHUD } from "../ui/uiButtons.js";
-import { resetScene } from "../app.js";
 import { applyComponentScale, autoPlacePartsOnTable } from "../core/utils.js";
 import { detectSlots } from "../core/slots.js";
 import { create3DDialog } from "../ui/tutorial3D.js";
 
-export async function createScenePC(engine, canvas) {
-  // 1. Load Base Scene
+// MENERIMA PARAMETER onExitApp
+export async function createScenePC(engine, canvas, onExitApp) {
   const scene = await createSceneBase(engine, canvas);
-
-  // --- 2. PANGGIL DIALOG TUTORIAL ---
   create3DDialog(scene, "pc");
 
-  // 3. Load PC-specific assets
   const assetList = [
     { key: "case", file: "pc_case.glb" },
     { key: "mobo", file: "motherboard.glb" },
@@ -38,31 +34,23 @@ export async function createScenePC(engine, canvas) {
         scene
       );
       const root = res.meshes[0];
-
       res.meshes.forEach((m) => {
         m.isPickable = true;
         m.checkCollisions = true;
       });
-
       scene.__app.loaded[a.key] = { key: a.key, root, meshes: res.meshes };
 
       if (scene.getPhysicsEngine() && root) {
-        try {
-          // Casing tetap Mass 0 (Statis)
-          const massValue = a.key === "case" ? 0 : 1;
-
-          root.physicsImpostor = new BABYLON.PhysicsImpostor(
-            root,
-            BABYLON.PhysicsImpostor.BoxImpostor,
-            { mass: massValue, friction: 0.5, restitution: 0.1 },
-            scene
-          );
-        } catch (e) {
-          console.warn("Failed adding physics to", a.key, e);
-        }
+        const massValue = a.key === "case" ? 0 : 1;
+        root.physicsImpostor = new BABYLON.PhysicsImpostor(
+          root,
+          BABYLON.PhysicsImpostor.BoxImpostor,
+          { mass: massValue, friction: 0.5, restitution: 0.1 },
+          scene
+        );
       }
     } catch (e) {
-      console.warn("Failed to load", a.file, e);
+      console.warn(e);
     }
   }
 
@@ -70,32 +58,70 @@ export async function createScenePC(engine, canvas) {
   if (scene.__app.table)
     autoPlacePartsOnTable(scene.__app.table, scene.__app.loaded);
 
-  // --- PERBAIKAN POSISI CASING PC ---
   const pcCase = scene.__app.loaded["case"];
   if (pcCase && pcCase.root && scene.__app.table) {
-    // Ambil tinggi permukaan meja
     const tableBounds = scene.__app.table.getBoundingInfo().boundingBox;
-
-    // UPDATE: Naikkan sedikit (+ 0.02) agar tidak tenggelam
     pcCase.root.position.y = tableBounds.maximumWorld.y + 0.02;
   }
 
-  // detect slots, interactions, tutorial
   scene.__app.slots = detectSlots(scene);
   try {
     attachInteractions(scene);
-  } catch (e) {
-    console.warn(e);
-  }
+  } catch (e) {}
   try {
     scene.__tutorial = createTutorialManager(scene);
   } catch (e) {}
 
-  // HUD
+  // --- LOGIC RESET BARANG (GENERIC) ---
+  const initialStates = [];
+  function saveInitialStates() {
+    Object.values(scene.__app.loaded).forEach((item) => {
+      if (item.root) {
+        initialStates.push({
+          mesh: item.root,
+          position: item.root.position.clone(),
+          rotation: item.root.rotationQuaternion
+            ? item.root.rotationQuaternion.clone()
+            : item.root.rotation.clone(),
+        });
+      }
+    });
+  }
+
+  function handleResetObjects() {
+    console.log("🔄 Resetting objects...");
+    initialStates.forEach((state) => {
+      const mesh = state.mesh;
+      if (!mesh) return;
+
+      mesh.setParent(null); // PENTING: LEPAS PARENT
+
+      if (mesh.physicsImpostor) {
+        mesh.physicsImpostor.setLinearVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+        mesh.physicsImpostor.sleep();
+        setTimeout(() => mesh.physicsImpostor.wakeUp(), 50);
+      }
+
+      mesh.position.copyFrom(state.position);
+      if (mesh.rotationQuaternion)
+        mesh.rotationQuaternion.copyFrom(state.rotation);
+      else mesh.rotation.copyFrom(state.rotation);
+
+      mesh.computeWorldMatrix(true);
+    });
+  }
+
+  saveInitialStates(); // Simpan posisi awal
+
+  // --- HUD ---
   createHUD(
     scene,
-    () => window.location.reload(),
-    () => resetScene()
+    () => {
+      if (onExitApp) onExitApp();
+      else window.location.reload();
+    },
+    handleResetObjects
   );
 
   return scene;
