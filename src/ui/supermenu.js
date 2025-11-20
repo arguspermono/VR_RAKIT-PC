@@ -199,13 +199,15 @@ function createModal({ scene, title, content }) {
 }
 
 // =====================================================================
-// 🛠️ BUTTON CREATOR (matching main menu style)
+// 🛠️ BUTTON CREATOR (Adjusted Size & Font)
 // =====================================================================
 function createSuperButton(name, label, panel, onClick) {
   const btn = new BABYLON.GUI.HolographicButton(name);
   panel.addControl(btn);
 
-  btn.scaling = new BABYLON.Vector3(1.2, 0.6, 1);
+  // 📏 UKURAN TOMBOL DIPERKECIL (Lebih Ramping/Sleek)
+  // X: 1.1 (Lebar), Y: 0.45 (Tinggi)
+  btn.scaling = new BABYLON.Vector3(1.1, 0.55, 1);
   btn.cornerRadius = 5;
 
   if (btn.backMaterial) {
@@ -216,7 +218,9 @@ function createSuperButton(name, label, panel, onClick) {
   const txt = new BABYLON.GUI.TextBlock();
   txt.text = label.toUpperCase();
   txt.color = "#00FFFF";
-  txt.fontSize = 26;
+
+  // 🔡 FONT DIPERKECIL
+  txt.fontSize = 22;
   txt.fontStyle = "bold";
   txt.height = "40px";
   txt.shadowColor = "#008888";
@@ -231,7 +235,6 @@ function createSuperButton(name, label, panel, onClick) {
     txt.color = "#00FFFF";
   });
 
-  // ⬅ PERBAIKAN: klik langsung tanpa perlu pointer keluar
   btn.onPointerDownObservable.add(() => {
     playClick();
     if (onClick) onClick();
@@ -241,14 +244,21 @@ function createSuperButton(name, label, panel, onClick) {
 }
 
 // =====================================================================
-//  SUPER MENU (Full Ready) - PERBAIKAN UNTUK XR/VR
+// 🚀 SUPER MENU (FINAL) - Margin & Layout Optimized
 // =====================================================================
-export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
+export function createSuperMenu({
+  scene,
+  onStart,
+  onAbout,
+  onCredits,
+  onHowTo,
+}) {
   initSuperAudio();
-  initCloseBtn(scene); // --- 1. Persiapan Container/Manager --- // Tetap buat manager di sini
+  initCloseBtn(scene);
 
-  const manager = new BABYLON.GUI.GUI3DManager(scene); // ───── LOAD ENVIRONMENT ─────────
+  const manager = new BABYLON.GUI.GUI3DManager(scene);
 
+  // ───── LOAD ENVIRONMENT ─────────
   BABYLON.SceneLoader.ImportMesh(
     "",
     "./assets/",
@@ -261,22 +271,25 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
       });
 
       const cam = scene.activeCamera;
-      cam.position = new BABYLON.Vector3(0, 1.6, 2);
-      cam.setTarget(new BABYLON.Vector3(0, 1.4, 3));
-
+      if (cam) {
+        cam.position = new BABYLON.Vector3(0, 1.6, 2);
+        cam.setTarget(new BABYLON.Vector3(0, 1.4, 3));
+      }
       startBGM();
     }
-  ); // ───── PANEL BUTTON 3D ─────────
+  );
 
+  // ───── PANEL BUTTON 3D ─────────
   const panel = new BABYLON.GUI.Container3D();
   manager.addControl(panel);
-  panel.position = new BABYLON.Vector3(0, 1.1, 6); // ───── BACK GLASS & TITLE (Tidak perlu diubah) ─────────
+  panel.position = new BABYLON.Vector3(0, 1.1, 6);
 
+  // ───── BACK GLASS (Diperbesar Tinggi-nya) ─────────
   const glass = BABYLON.MeshBuilder.CreatePlane(
     "glassBack",
     {
-      width: 3.8,
-      height: 3,
+      width: 3.5,
+      height: 3.8, // Tinggi ditambah agar muat tombol yg diregangkan
     },
     scene
   );
@@ -289,12 +302,19 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
   mat.specularColor = new BABYLON.Color3(0.3, 0.5, 0.8);
   mat.backFaceCulling = false;
 
-  const noiseTex = new BABYLON.Texture("./assets/textures/noise64.png", scene);
-  noiseTex.level = 0.25;
-  mat.opacityTexture = noiseTex;
+  // Texture noise (optional)
+  try {
+    const noiseTex = new BABYLON.Texture(
+      "./assets/textures/noise64.png",
+      scene
+    );
+    noiseTex.level = 0.25;
+    mat.opacityTexture = noiseTex;
+  } catch (e) {}
 
   glass.material = mat;
 
+  // ───── JUDUL (Dinaikkan) ─────────
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
     "superTitle",
     {
@@ -303,7 +323,7 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
     },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2.4, 5);
+  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5); // Posisi Y Naik ke 2.8
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
@@ -320,64 +340,98 @@ export function createSuperMenu({ scene, onStart, onAbout, onCredits }) {
   titleText.fontStyle = "bold";
   titleText.shadowColor = "#00AAFF";
   titleText.shadowBlur = 20;
-  titleTex.addControl(titleText); // ───── BUTTONS ─────────
+  titleTex.addControl(titleText);
 
-  const btnStart = createSuperButton("btnStart", "Start", panel, onStart);
-  btnStart.position = new BABYLON.Vector3(0, 0.8, 0);
+  // ───── BUTTONS (Margin Diperlebar) ─────────
 
+  // 1. START (Paling Atas)
+  const btnStart = createSuperButton(
+    "btnStart",
+    "Start Simulation",
+    panel,
+    onStart
+  );
+  btnStart.position = new BABYLON.Vector3(0, 1.2, 0); // Y: 1.2
+
+  // 2. HOW TO PLAY
+  const handleHowTo = onHowTo
+    ? onHowTo
+    : () => {
+        createModal({
+          scene,
+          title: "How To Play",
+          content:
+            "PANDUAN KONTROL VR:\n\n" +
+            "1. BERGERAK:\n" +
+            "   Gunakan Joystick Kiri/Kanan untuk Teleport.\n\n" +
+            "2. INTERAKSI OBJEK:\n" +
+            "   - Arahkan tangan ke komponen.\n" +
+            "   - Tekan tombol TRIGGER/GRIP untuk mengambil (Grab).\n\n" +
+            "3. Alur PERAKITAN:\n" +
+            "   - Bawa komponen ke Casing.\n" +
+            "   - Cari area hijau (Snap Zone).\n" +
+            "   - Lepas tombol untuk memasang.\n\n" +
+            "Selamat mencoba!",
+        });
+      };
+  const btnHowTo = createSuperButton(
+    "btnHowTo",
+    "How To Play",
+    panel,
+    handleHowTo
+  );
+  btnHowTo.position = new BABYLON.Vector3(0, 0.45, 0); // Y: 0.45 (Margin lebar)
+
+  // 3. ABOUT
   const btnAbout = createSuperButton("btnAbout", "About", panel, () => {
     createModal({
       scene,
       title: "About",
       content:
-        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah. Melalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik, sehingga sangat efektif untuk pembelajaran kejuruan.\n",
+        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah.\n\nMelalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik.",
     });
   });
-  btnAbout.position = new BABYLON.Vector3(0, -0, 0);
+  btnAbout.position = new BABYLON.Vector3(0, -0.3, 0); // Y: -0.30
 
+  // 4. CREDITS (Paling Bawah)
   const btnCredits = createSuperButton("btnCredits", "Credits", panel, () => {
     createModal({
       scene,
       title: "Credits",
       content:
-        "Dosen pembimbing: \n" +
+        "Dosen Pembimbing:\n" +
         "Bapak Sritrusta Sukaridhoto, ST., Ph.D.\n\n" +
-        "Asisten dosen pembimbing: \n" +
-        "Faris Saifullah D4 IT RPL\n\n" +
-        "Didukung oleh Politeknik Elektronika Negeri Surabaya, Jurusan Teknologi Rekayasa Multimedia.\n\n" +
-        "Tim pengembang Kelompok 2:\n" +
+        "Asisten Dosen:\n" +
+        "Faris Saifullah (D4 IT RPL)\n\n" +
+        "Tim Pengembang (Kelompok 2):\n" +
         "M. Rafif Nuha Daniswara\n" +
         "Ignatius Calvin Anggoro\n" +
         "Angelica Tamara Sitorus\n" +
         "Arya Bagus Permono\n" +
-        "Erlangga Rahmansyah \n" +
-        "Hernawan Aprilianda Hamzah \n\n" +
-        "Harapan kami Craftlab VR dapat meningkatkan pengalaman praktikum dan pembelajaran di pendidikan kejuruan.",
+        "Erlangga Rahmansyah\n" +
+        "Hernawan Aprilianda Hamzah\n\n" +
+        "Didukung oleh: PENS - Teknologi Rekayasa Multimedia",
     });
   });
-  btnCredits.position = new BABYLON.Vector3(0, -0.8, 0); // --- 2. Inisialisasi XR & Integrasi Manager 3D ---
+  btnCredits.position = new BABYLON.Vector3(0, -1.05, 0); // Y: -1.05
 
+  // --- 2. Inisialisasi XR & Integrasi Manager 3D ---
   try {
-    // Tunggu hingga pengalaman XR siap
     scene
       .createDefaultXRExperienceAsync({
         disableTeleportation: true,
       })
       .then((xrExperience) => {
-        // Saat XR siap, set manager 3D untuk menggunakan input XR
         if (xrExperience.pointerSelection) {
-          // Menggunakan ray cast dari controller sebagai pointer
           manager.utilityLayer.utilityLayerScene.activeCamera =
             xrExperience.pointerSelection.attachToMesh.camera;
-        } // Memastikan interaksi pointer selection aktif
+        }
         xrExperience.input.onControllerAddedObservable.add((controller) => {
-          // Asumsi controller memiliki ray/pointer, GUI3DManager akan otomatis menangkap ini
-          // asalkan controller tersebut memiliki 'laserPointer' atau 'utilityLayerScene'
-          // Sudah ditangani oleh defaultXRExperience.
+          // Auto-handle by GUI3DManager
         });
       });
   } catch (e) {
-    // Tangani error jika gagal membuat XR experience
+    // Fallback jika WebXR tidak tersedia
   }
 
   return panel;
