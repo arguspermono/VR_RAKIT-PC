@@ -323,7 +323,7 @@ export function createSuperMenu({
     },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2.5, 5); // Posisi Y Naik ke 2.8
+  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5); // Posisi Y Naik ke 2.8
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
