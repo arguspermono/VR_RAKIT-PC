@@ -1,8 +1,7 @@
-// src/core/sceneBase.js
 import { setupColliders } from "./collisions.js";
 import { setupControls } from "./controls.js";
 
-// Singleton instance untuk AmmoJS (Physics)
+// Singleton instance untuk AmmoJS
 let ammoInstance = null;
 
 export async function createSceneBase(engine, canvas) {
@@ -10,78 +9,103 @@ export async function createSceneBase(engine, canvas) {
   scene.clearColor = new BABYLON.Color3(0.86, 0.9, 0.95);
 
   // -----------------------------------------------------------------
-  // [FIX 1] INISIALISASI STATE APLIKASI
+  // [1] SETUP PHYSICS ENGINE
   // -----------------------------------------------------------------
-  // Ini wajib ada karena scenePC.js mengakses scene.__app
+  if (typeof Ammo !== "undefined") {
+    if (!ammoInstance) {
+      ammoInstance = await Ammo();
+    }
+    const physicsPlugin = new BABYLON.AmmoJSPlugin(true, ammoInstance);
+    scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), physicsPlugin);
+  }
+
   scene.__app = {
     loaded: {},
-    table: null, // Nanti diisi setelah lab loaded
+    table: null,
   };
 
-  // 1. AKTIFKAN SISTEM COLLISION GLOBAL
   scene.collisionsEnabled = true;
 
-  // 2. CAMERA STANDARD (Player)
+  // -----------------------------------------------------------------
+  // [2] CAMERA & LIGHT
+  // -----------------------------------------------------------------
   const camera = new BABYLON.UniversalCamera(
     "playerCam",
-    new BABYLON.Vector3(0, 1.7, -2), // Posisi awal
+    new BABYLON.Vector3(0, 1.7, -2),
     scene
   );
   camera.attachControl(canvas, true);
   camera.speed = 0.12;
   camera.angularSensibility = 800;
-
   camera.checkCollisions = true;
   camera.applyGravity = true;
   camera.ellipsoid = new BABYLON.Vector3(0.3, 0.9, 0.3);
   camera.minZ = 0.1;
 
-  // 3. PENCAHAYAAN DASAR
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
   // -----------------------------------------------------------------
-  // [FIX 2] LOAD ENVIRONMENT (BACKGROUND / RUANGAN)
+  // [3] MATERIAL DEBUG (Warna Transparan)
   // -----------------------------------------------------------------
-  try {
-    // Memuat computer_lab.glb agar background muncul
-    const labRes = await BABYLON.SceneLoader.ImportMeshAsync(
-      "",
-      "assets/",
-      "computer_lab.glb",
+  const debugMatLantai = new BABYLON.StandardMaterial("debugMatLantai", scene);
+  debugMatLantai.diffuseColor = new BABYLON.Color3(1, 0, 0); // Merah
+  debugMatLantai.alpha = 0.5;
+
+  const debugMatMeja = new BABYLON.StandardMaterial("debugMatMeja", scene);
+  debugMatMeja.diffuseColor = new BABYLON.Color3(0, 1, 1); // Cyan
+  debugMatMeja.alpha = 0.5;
+
+  // -----------------------------------------------------------------
+  // [4] FUNGSI HELPER: BUAT BOX COLLIDER (DENGAN OFFSET Y)
+  // -----------------------------------------------------------------
+  const createColliderFromMesh = (
+    meshRef,
+    name,
+    material,
+    frictionVal,
+    offsetY = 0
+  ) => {
+    // 1. Ambil ukuran dari mesh referensi
+    const boundingBox = meshRef.getBoundingInfo().boundingBox;
+
+    const width = boundingBox.extendSizeWorld.x * 2;
+    const height = boundingBox.extendSizeWorld.y * 2;
+    const depth = boundingBox.extendSizeWorld.z * 2;
+
+    // 2. Buat Box Primitif
+    const collider = BABYLON.MeshBuilder.CreateBox(
+      name,
+      {
+        width: width,
+        height: height,
+        depth: depth,
+      },
       scene
     );
 
-    // Setting properti untuk environment
-    labRes.meshes.forEach((m) => {
-      m.checkCollisions = true; // Agar tidak tembus
-      m.isPickable = false; // Agar tidak mengganggu klik barang
-      m.freezeWorldMatrix(); // Optimasi performa
-    });
+    // 3. Posisikan di tengah, lalu geser sesuai offsetY
+    collider.position = boundingBox.centerWorld.clone();
+    collider.position.y += offsetY; // <--- INI PENGATUR NAIK/TURUNNYA
 
-    // Mencari meja untuk spawn point barang (Logika sederhana mencari mesh dengan nama 'Table')
-    // Jika nama mesh di blender berbeda, sesuaikan string ini.
-    const tableMesh = labRes.meshes.find(
-      (m) =>
-        m.name.toLowerCase().includes("table") ||
-        m.name.toLowerCase().includes("meja")
+    // 4. Setup Visual & Fisika
+    collider.material = material;
+    collider.isVisible = true; // Set ke false jika ingin menyembunyikan kotak debug
+
+    collider.physicsImpostor = new BABYLON.PhysicsImpostor(
+      collider,
+      BABYLON.PhysicsImpostor.BoxImpostor,
+      { mass: 0, friction: frictionVal, restitution: 0 },
+      scene
     );
 
-    if (tableMesh) {
-      scene.__app.table = tableMesh;
-    } else {
-      console.warn(
-        "Mesh meja tidak ditemukan, menggunakan mesh pertama sebagai referensi spawn."
-      );
-      scene.__app.table = labRes.meshes[1]; // Fallback
-    }
-  } catch (e) {
-    console.error("Gagal memuat environment:", e);
-  }
+    collider.checkCollisions = true;
+    return collider;
+  };
 
-  // =====================================================================
-  // 🧱 GLOBAL ENVIRONMENT COLLIDERS (Invisible Walls & Floor)
-  // =====================================================================
-  const createGlobalCollider = (name, w, h, d, x, y, z) => {
+  // -----------------------------------------------------------------
+  // [5] DINDING PEMBATAS MANUAL
+  // -----------------------------------------------------------------
+  const createInvisibleWall = (name, w, h, d, x, y, z) => {
     const box = BABYLON.MeshBuilder.CreateBox(
       name,
       { width: w, height: h, depth: d },
@@ -90,25 +114,70 @@ export async function createSceneBase(engine, canvas) {
     box.position = new BABYLON.Vector3(x, y, z);
     box.isVisible = false;
     box.checkCollisions = true;
-    box.isPickable = false;
     return box;
   };
+  createInvisibleWall("globalWallFront", 25, 10, 1, 0, 5, 10.5);
+  createInvisibleWall("globalWallBack", 25, 10, 1, 0, 5, -10.5);
+  createInvisibleWall("globalWallLeft", 1, 10, 25, -10.5, 5, 0);
+  createInvisibleWall("globalWallRight", 1, 10, 25, 10.5, 5, 0);
 
-  createGlobalCollider("globalFloor", 50, 0.2, 50, 0, -0.1, 0);
-  createGlobalCollider("globalWallFront", 25, 10, 1, 0, 5, 10.5);
-  createGlobalCollider("globalWallBack", 25, 10, 1, 0, 5, -10.5);
-  createGlobalCollider("globalWallLeft", 1, 10, 25, -10.5, 5, 0);
-  createGlobalCollider("globalWallRight", 1, 10, 25, 10.5, 5, 0);
+  // -----------------------------------------------------------------
+  // [6] LOAD ENVIRONMENT
+  // -----------------------------------------------------------------
+  try {
+    const labRes = await BABYLON.SceneLoader.ImportMeshAsync(
+      "",
+      "assets/",
+      "computer_lab.glb",
+      scene
+    );
 
-  // =====================================================================
+    labRes.meshes.forEach((m) => {
+      // --- A. LANTAI ---
+      if (m.name === "GRAVITY_LANTAI") {
+        // [ATUR KETINGGIAN DISINI]
+        // -0.02 artinya turun 2cm ke bawah (biar tidak flicker dengan lantai asli)
+        createColliderFromMesh(
+          m,
+          "collider_lantai",
+          debugMatLantai,
+          0.5,
+          -0.45
+        );
 
-  // 4. PHYSICS ENGINE SETUP (Ammo.js)
-  if (typeof Ammo !== "undefined") {
-    if (!ammoInstance) {
-      ammoInstance = await Ammo();
+        m.isVisible = false; // Sembunyikan mesh referensi
+      }
+
+      // --- B. MEJA ---
+      else if (m.name === "GRAVITY_MEJA") {
+        // [ATUR KETINGGIAN DISINI]
+        // Ubah -0.05 menjadi angka yang kamu mau.
+        // Semakin besar minusnya (misal -0.2), kotak biru akan makin turun.
+        const tableCollider = createColliderFromMesh(
+          m,
+          "collider_meja",
+          debugMatMeja,
+          1.0,
+          -0.45
+        );
+
+        scene.__app.table = tableCollider;
+        m.isVisible = false; // Sembunyikan mesh referensi
+      }
+
+      // --- C. VISUAL LAINNYA ---
+      else {
+        m.freezeWorldMatrix();
+        m.checkCollisions = true;
+        m.isPickable = false;
+      }
+    });
+
+    if (!scene.__app.table) {
+      scene.__app.table = labRes.meshes[0];
     }
-    const physicsPlugin = new BABYLON.AmmoJSPlugin(true, ammoInstance);
-    scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), physicsPlugin);
+  } catch (e) {
+    console.error("Gagal memuat environment:", e);
   }
 
   return scene;
