@@ -132,6 +132,12 @@ export async function createScenePC(engine, canvas, onExitApp) {
 
       mesh.computeWorldMatrix(true);
     });
+
+    // 3. Reset Tutorial Logic (Agar kembali ke step awal)
+    if (scene.__tutorial && typeof scene.__tutorial.reset === "function") {
+      scene.__tutorial.reset();
+      console.log("✅ Tutorial Logic Reset to Step 0");
+    }
   }
 
   saveInitialStates(); // Simpan posisi awal
