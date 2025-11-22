@@ -75,12 +75,13 @@ export async function createSceneLaptop(engine, canvas, onExitApp) {
     scene.__tutorial = createTutorialManager(scene, order);
   } catch (e) {}
 
-  // --- LOGIC RESET BARANG (GENERIC) ---
+  // --- LOGIC RESET BARANG (FIXED) ---
   const initialStates = [];
   function saveInitialStates() {
     Object.values(scene.__app.loaded).forEach((item) => {
       if (item.root) {
         initialStates.push({
+          key: item.key, // Simpan ID
           mesh: item.root,
           position: item.root.position.clone(),
           rotation: item.root.rotationQuaternion
@@ -92,18 +93,40 @@ export async function createSceneLaptop(engine, canvas, onExitApp) {
   }
 
   function handleResetObjects() {
-    console.log("🔄 Resetting objects...");
+    console.log("🔄 Resetting Laptop objects (Full Reset)...");
+
+    // 1. Reset Slot Status
+    const slots = scene.__app.slots;
+    if (slots) {
+      for (const key in slots) {
+        const slot = slots[key];
+        slot.used = false;
+        if (slot.mesh) slot.mesh.setEnabled(true);
+      }
+    }
+
+    // 2. Reset Components
     initialStates.forEach((state) => {
       const mesh = state.mesh;
       if (!mesh) return;
 
-      mesh.setParent(null); // PENTING: LEPAS PARENT
+      mesh.setParent(null);
+      mesh.isPickable = true;
 
-      if (mesh.physicsImpostor) {
+      // Re-create Physics
+      if (!mesh.physicsImpostor || mesh.physicsImpostor.isDisposed) {
+        // Casing Laptop statis (mass 0), komponen lain dinamis (mass 1)
+        const massValue = state.key === "casing_laptop" ? 0 : 1;
+        mesh.physicsImpostor = new BABYLON.PhysicsImpostor(
+          mesh,
+          BABYLON.PhysicsImpostor.BoxImpostor,
+          { mass: massValue, friction: 0.5, restitution: 0.1 },
+          scene
+        );
+      } else {
         mesh.physicsImpostor.setLinearVelocity(BABYLON.Vector3.Zero());
         mesh.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
-        mesh.physicsImpostor.sleep();
-        setTimeout(() => mesh.physicsImpostor.wakeUp(), 50);
+        mesh.physicsImpostor.wakeUp();
       }
 
       mesh.position.copyFrom(state.position);
