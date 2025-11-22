@@ -1,3 +1,4 @@
+// src/core/sceneBase.js
 import { setupColliders } from "./collisions.js";
 import { setupControls } from "./controls.js";
 
@@ -22,6 +23,7 @@ export async function createSceneBase(engine, canvas) {
   scene.__app = {
     loaded: {},
     table: null,
+    camera: null, // Placeholder camera
   };
 
   scene.collisionsEnabled = true;
@@ -42,21 +44,26 @@ export async function createSceneBase(engine, canvas) {
   camera.ellipsoid = new BABYLON.Vector3(0.3, 0.9, 0.3);
   camera.minZ = 0.1;
 
+  // --- 🔥 FIX CONTROLS DISINI 🔥 ---
+  scene.__app.camera = camera;
+  setupControls(scene); // Aktifkan WASD
+  // --------------------------------
+
   new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
 
   // -----------------------------------------------------------------
-  // [3] MATERIAL DEBUG (Warna Transparan)
+  // [3] MATERIAL DEBUG
   // -----------------------------------------------------------------
   const debugMatLantai = new BABYLON.StandardMaterial("debugMatLantai", scene);
-  debugMatLantai.diffuseColor = new BABYLON.Color3(1, 0, 0); // Merah
+  debugMatLantai.diffuseColor = new BABYLON.Color3(1, 0, 0);
   debugMatLantai.alpha = 0.5;
 
   const debugMatMeja = new BABYLON.StandardMaterial("debugMatMeja", scene);
-  debugMatMeja.diffuseColor = new BABYLON.Color3(0, 1, 1); // Cyan
+  debugMatMeja.diffuseColor = new BABYLON.Color3(0, 1, 1);
   debugMatMeja.alpha = 0.5;
 
   // -----------------------------------------------------------------
-  // [4] FUNGSI HELPER: BUAT BOX COLLIDER (DENGAN OFFSET Y)
+  // [4] HELPER: BOX COLLIDER
   // -----------------------------------------------------------------
   const createColliderFromMesh = (
     meshRef,
@@ -65,31 +72,21 @@ export async function createSceneBase(engine, canvas) {
     frictionVal,
     offsetY = 0
   ) => {
-    // 1. Ambil ukuran dari mesh referensi
     const boundingBox = meshRef.getBoundingInfo().boundingBox;
-
     const width = boundingBox.extendSizeWorld.x * 2;
     const height = boundingBox.extendSizeWorld.y * 2;
     const depth = boundingBox.extendSizeWorld.z * 2;
 
-    // 2. Buat Box Primitif
     const collider = BABYLON.MeshBuilder.CreateBox(
       name,
-      {
-        width: width,
-        height: height,
-        depth: depth,
-      },
+      { width, height, depth },
       scene
     );
 
-    // 3. Posisikan di tengah, lalu geser sesuai offsetY
     collider.position = boundingBox.centerWorld.clone();
-    collider.position.y += offsetY; // <--- INI PENGATUR NAIK/TURUNNYA
-
-    // 4. Setup Visual & Fisika
+    collider.position.y += offsetY;
     collider.material = material;
-    collider.isVisible = false; // Set ke false jika ingin menyembunyikan kotak debug
+    collider.isVisible = false;
 
     collider.physicsImpostor = new BABYLON.PhysicsImpostor(
       collider,
@@ -103,7 +100,7 @@ export async function createSceneBase(engine, canvas) {
   };
 
   // -----------------------------------------------------------------
-  // [5] DINDING PEMBATAS MANUAL
+  // [5] DINDING PEMBATAS
   // -----------------------------------------------------------------
   const createInvisibleWall = (name, w, h, d, x, y, z) => {
     const box = BABYLON.MeshBuilder.CreateBox(
@@ -133,10 +130,7 @@ export async function createSceneBase(engine, canvas) {
     );
 
     labRes.meshes.forEach((m) => {
-      // --- A. LANTAI ---
       if (m.name === "GRAVITY_LANTAI") {
-        // [ATUR KETINGGIAN DISINI]
-        // -0.02 artinya turun 2cm ke bawah (biar tidak flicker dengan lantai asli)
         createColliderFromMesh(
           m,
           "collider_lantai",
@@ -144,15 +138,8 @@ export async function createSceneBase(engine, canvas) {
           0.5,
           -0.45
         );
-
-        m.isVisible = false; // Sembunyikan mesh referensi
-      }
-
-      // --- B. MEJA ---
-      else if (m.name === "GRAVITY_MEJA") {
-        // [ATUR KETINGGIAN DISINI]
-        // Ubah -0.05 menjadi angka yang kamu mau.
-        // Semakin besar minusnya (misal -0.2), kotak biru akan makin turun.
+        m.isVisible = false;
+      } else if (m.name === "GRAVITY_MEJA") {
         const tableCollider = createColliderFromMesh(
           m,
           "collider_meja",
@@ -160,13 +147,9 @@ export async function createSceneBase(engine, canvas) {
           1.0,
           -0.45
         );
-
         scene.__app.table = tableCollider;
-        m.isVisible = false; // Sembunyikan mesh referensi
-      }
-
-      // --- C. VISUAL LAINNYA ---
-      else {
+        m.isVisible = false;
+      } else {
         m.freezeWorldMatrix();
         m.checkCollisions = true;
         m.isPickable = false;
