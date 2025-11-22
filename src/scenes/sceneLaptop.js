@@ -136,6 +136,12 @@ export async function createSceneLaptop(engine, canvas, onExitApp) {
 
       mesh.computeWorldMatrix(true);
     });
+
+    // 3. Reset Tutorial Logic
+    if (scene.__tutorial && typeof scene.__tutorial.reset === "function") {
+      scene.__tutorial.reset();
+      console.log("✅ Tutorial Logic Reset to Step 0");
+    }
   }
 
   saveInitialStates();

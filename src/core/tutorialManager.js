@@ -80,8 +80,23 @@ export function createTutorialManager(scene, customOrder) {
     }
   }
 
+  // --- FUNGSI RESET BARU ---
+  function reset() {
+    stepIndex = 0;
+    hl.removeAllMeshes();
+    if (currentHint) {
+      ui.removeControl(currentHint);
+      currentHint = null;
+    }
+    // Highlight item pertama lagi
+    if (ORDER.length > 0) {
+      highlight(ORDER[0]);
+    }
+  }
+
   // start
   highlight(ORDER[0]);
 
-  return { allowSnap, onSnapped };
+  // Expose 'reset' keluar
+  return { allowSnap, onSnapped, reset };
 }
