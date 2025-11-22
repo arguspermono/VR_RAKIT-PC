@@ -89,7 +89,7 @@ export async function createSceneBase(engine, canvas) {
 
     // 4. Setup Visual & Fisika
     collider.material = material;
-    collider.isVisible = true; // Set ke false jika ingin menyembunyikan kotak debug
+    collider.isVisible = false; // Set ke false jika ingin menyembunyikan kotak debug
 
     collider.physicsImpostor = new BABYLON.PhysicsImpostor(
       collider,
