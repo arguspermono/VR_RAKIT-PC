@@ -99,7 +99,7 @@ function createModal({ scene, title, content }) {
     "modalBackdrop",
     {
       width: 2,
-      height: 2.3,
+      height: 10,
     },
     scene
   );
@@ -116,11 +116,11 @@ function createModal({ scene, title, content }) {
     "modalPanel",
     {
       width: 2.0,
-      height: 2,
+      height: 2.5,
     },
     scene
   );
-  panel.position = new BABYLON.Vector3(0, 0.5, 5.5);
+  panel.position = new BABYLON.Vector3(0, 1.1, 5.5);
   panel.isPickable = true;
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
