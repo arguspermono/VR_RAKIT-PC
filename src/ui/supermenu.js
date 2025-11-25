@@ -1,3 +1,5 @@
+// src/ui/supermenu.js
+
 // ============================================================
 // 🎵 AUDIO SYSTEM
 // ============================================================
@@ -47,6 +49,8 @@ function initCloseBtn(scene) {
   if (closeBtn3D) return; // sudah dibuat
 
   const manager = new BABYLON.GUI.GUI3DManager(scene);
+  manager.useUtilityLayer = false; // FIX: Agar konsisten dengan scene utama
+
   closeBtn3D = new BABYLON.GUI.HolographicButton("btnCloseModal");
   manager.addControl(closeBtn3D);
 
@@ -74,8 +78,8 @@ function initCloseBtn(scene) {
 
   closeBtn3D.onPointerDownObservable.add(() => {
     if (activeModal) {
-      activeModal.backdrop.dispose();
-      activeModal.panel.dispose();
+      if (activeModal.backdrop) activeModal.backdrop.dispose();
+      if (activeModal.panel) activeModal.panel.dispose();
       activeModal = null;
     }
     closeBtn3D.isVisible = false;
@@ -84,7 +88,7 @@ function initCloseBtn(scene) {
 }
 
 // =====================================================================
-// 🪟 MODAL SYSTEM (About & Credits)
+// 🪟 MODAL SYSTEM (SIDE LAYOUT - KANAN)
 // =====================================================================
 function createModal({ scene, title, content }) {
   // Hapus modal lama jika ada
@@ -94,33 +98,38 @@ function createModal({ scene, title, content }) {
     activeModal = null;
   }
 
+  // --- KONFIGURASI POSISI (SAMPING KANAN) ---
+  const MODAL_X = 3.0; // Geser ke kanan (4 meter)
+  const MODAL_Y = 1.2; // Tinggi mata duduk
+  const MODAL_Z = 5.0; // Jarak kedalaman (sedikit maju dari menu utama)
+
+  // Rotasi Y: Agar panel menghadap ke kiri (ke arah player)
+  const MODAL_ROT_Y = 0.6; // Sekitar -35 derajat
+
   // ================= BACKDROP =================
   const backdrop = BABYLON.MeshBuilder.CreatePlane(
     "modalBackdrop",
-    {
-      width: 2,
-      height: 10,
-    },
+    { width: 3, height: 8 }, // Tinggi ditambah agar visual aman
     scene
   );
-  backdrop.position = new BABYLON.Vector3(0, 1.0, 5.6);
-  backdrop.isPickable = true;
+  // Posisikan sedikit di belakang panel
+  backdrop.position = new BABYLON.Vector3(MODAL_X, 1.0, MODAL_Z + 0.1);
+  backdrop.rotation.y = MODAL_ROT_Y; // Rotasi mengikuti panel
+  backdrop.isPickable = false;
 
   const backdropMat = new BABYLON.StandardMaterial("modalBackdropMat", scene);
   backdropMat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-  backdropMat.alpha = 1;
+  backdropMat.alpha = 0.8;
   backdrop.material = backdropMat;
 
   // ================= PANEL =================
   const panel = BABYLON.MeshBuilder.CreatePlane(
     "modalPanel",
-    {
-      width: 2.0,
-      height: 2.5,
-    },
+    { width: 2.8, height: 3.0 },
     scene
   );
-  panel.position = new BABYLON.Vector3(0, 1.1, 5.5);
+  panel.position = new BABYLON.Vector3(MODAL_X, MODAL_Y, MODAL_Z);
+  panel.rotation.y = MODAL_ROT_Y; // Rotasi menghadap player
   panel.isPickable = true;
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
@@ -138,57 +147,51 @@ function createModal({ scene, title, content }) {
     1024,
     true
   );
-  tex.rootContainer.zIndex = 10;
 
   const container = new BABYLON.GUI.Rectangle();
   container.thickness = 0;
   tex.addControl(container);
 
   const stack = new BABYLON.GUI.StackPanel();
-  stack.paddingTop = "15px";
-  stack.paddingLeft = "20px";
-  stack.paddingRight = "20px";
-  stack.spacing = 15;
+  stack.paddingTop = "50px";
   container.addControl(stack);
 
   // --- TITLE ---
   const titleText = new BABYLON.GUI.TextBlock();
   titleText.text = title.toUpperCase();
-  titleText.fontSize = 65;
+  titleText.fontSize = 70;
   titleText.color = "#FFFFFF";
-  titleText.height = "70px";
+  titleText.height = "100px";
   titleText.shadowBlur = 20;
   titleText.shadowColor = "#00FFFF";
-  titleText.outlineColor = "#000000";
-  titleText.outlineWidth = 3;
-  titleText.textHorizontalAlignment =
-    BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
   stack.addControl(titleText);
 
   // --- BODY ---
   const body = new BABYLON.GUI.TextBlock();
   body.text = content;
-  body.fontSize = 35;
+  body.fontSize = 38;
   body.color = "#FFFFAA";
-  body.width = "80%";
+  body.width = "85%";
   body.textWrapping = true;
-  body.height = "550px";
-  body.resizeToFit = true;
-  body.shadowBlur = 15;
-  body.shadowColor = "#000000";
-  body.outlineColor = "#333333";
-  body.outlineWidth = 1.5;
+  body.height = "700px";
   body.textHorizontalAlignment =
     BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
   stack.addControl(body);
 
   // ================= TOMBOL CLOSE GLOBAL =================
   if (closeBtn3D) {
-    closeBtn3D.position = new BABYLON.Vector3(
-      panel.position.x,
-      panel.position.y - 1.2,
-      panel.position.z + 0.05
-    );
+    // Kita hitung posisi tombol close agar pas di bawah panel yang miring
+    const offsetZ = -0.2; // Maju ke depan panel (local Z)
+    const offsetY = -1.5; // Turun ke bawah (local Y)
+
+    // Rumus rotasi sederhana untuk menempatkan tombol di depan panel yang miring
+    closeBtn3D.position.x = MODAL_X + Math.sin(MODAL_ROT_Y) * offsetZ;
+    closeBtn3D.position.z = MODAL_Z + Math.cos(MODAL_ROT_Y) * offsetZ;
+    closeBtn3D.position.y = MODAL_Y + offsetY;
+
+    // Samakan rotasi tombol dengan panel
+    closeBtn3D.mesh.rotation.y = MODAL_ROT_Y;
+
     closeBtn3D.isVisible = true;
   }
 
@@ -199,14 +202,13 @@ function createModal({ scene, title, content }) {
 }
 
 // =====================================================================
-// 🛠️ BUTTON CREATOR (Adjusted Size & Font)
+// 🛠️ BUTTON CREATOR (Original Style)
 // =====================================================================
 function createSuperButton(name, label, panel, onClick) {
   const btn = new BABYLON.GUI.HolographicButton(name);
   panel.addControl(btn);
 
-  // 📏 UKURAN TOMBOL DIPERKECIL (Lebih Ramping/Sleek)
-  // X: 1.1 (Lebar), Y: 0.45 (Tinggi)
+  // 📏 UKURAN TOMBOL (Original)
   btn.scaling = new BABYLON.Vector3(1.1, 0.55, 1);
   btn.cornerRadius = 5;
 
@@ -219,7 +221,7 @@ function createSuperButton(name, label, panel, onClick) {
   txt.text = label.toUpperCase();
   txt.color = "#00FFFF";
 
-  // 🔡 FONT DIPERKECIL
+  // 🔡 FONT (Original)
   txt.fontSize = 22;
   txt.fontStyle = "bold";
   txt.height = "40px";
@@ -244,7 +246,7 @@ function createSuperButton(name, label, panel, onClick) {
 }
 
 // =====================================================================
-// 🚀 SUPER MENU (FINAL) - Margin & Layout Optimized
+// 🚀 SUPER MENU (FIXED INTERACTION)
 // =====================================================================
 export function createSuperMenu({
   scene,
@@ -256,7 +258,9 @@ export function createSuperMenu({
   initSuperAudio();
   initCloseBtn(scene);
 
+  // [FIX 1] Gunakan mode scene utama agar interaksi VR lebih akurat
   const manager = new BABYLON.GUI.GUI3DManager(scene);
+  manager.useUtilityLayer = false;
 
   // ───── LOAD ENVIRONMENT ─────────
   BABYLON.SceneLoader.ImportMesh(
@@ -268,31 +272,29 @@ export function createSuperMenu({
       meshes.forEach((m) => {
         m.scaling = new BABYLON.Vector3(1, 1, 1);
         m.position = new BABYLON.Vector3(0, 0, 0);
+        m.isPickable = false; // Environment tidak boleh mengganggu raycast
       });
-
-      const cam = scene.activeCamera;
-      if (cam) {
-        cam.position = new BABYLON.Vector3(0, 1.6, 2);
-        cam.setTarget(new BABYLON.Vector3(0, 1.4, 3));
-      }
       startBGM();
     }
   );
 
-  // ───── PANEL BUTTON 3D ─────────
-  const panel = new BABYLON.GUI.Container3D();
-  manager.addControl(panel);
-  panel.position = new BABYLON.Vector3(0, 1.1, 6);
+  // Setup Kamera Awal (Non-VR)
+  const cam = scene.activeCamera;
+  if (cam) {
+    cam.position = new BABYLON.Vector3(0, 1.6, 2);
+    cam.setTarget(new BABYLON.Vector3(0, 1.4, 3));
+  }
 
-  // ───── BACK GLASS (Diperbesar Tinggi-nya) ─────────
+  // ───── BACK GLASS (Background Kaca - TENGAH) ─────────
   const glass = BABYLON.MeshBuilder.CreatePlane(
     "glassBack",
     {
       width: 3.5,
-      height: 3.8, // Tinggi ditambah agar muat tombol yg diregangkan
+      height: 3.8,
     },
     scene
   );
+  // Posisi Kaca di Z = 5.95
   glass.position = new BABYLON.Vector3(0, 1.4, 5.95);
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
@@ -301,18 +303,17 @@ export function createSuperMenu({
   mat.emissiveColor = new BABYLON.Color3(0.05, 0.08, 0.1);
   mat.specularColor = new BABYLON.Color3(0.3, 0.5, 0.8);
   mat.backFaceCulling = false;
-
-  // Texture noise (optional)
-  try {
-    const noiseTex = new BABYLON.Texture(
-      "./assets/textures/noise64.png",
-      scene
-    );
-    noiseTex.level = 0.25;
-    mat.opacityTexture = noiseTex;
-  } catch (e) {}
-
   glass.material = mat;
+
+  // [FIX 2] Matikan isPickable pada kaca agar laser bisa tembus ke tombol
+  glass.isPickable = false;
+
+  // ───── PANEL BUTTON 3D (TENGAH) ─────────
+  const panel = new BABYLON.GUI.Container3D();
+  manager.addControl(panel);
+
+  // [FIX 3] Majukan posisi panel tombol ke Z = 5.8
+  panel.position = new BABYLON.Vector3(0, 1.1, 5.8);
 
   // ───── JUDUL (Dinaikkan) ─────────
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
@@ -323,7 +324,7 @@ export function createSuperMenu({
     },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5); // Posisi Y Naik ke 2.8
+  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5.8);
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
@@ -342,16 +343,16 @@ export function createSuperMenu({
   titleText.shadowBlur = 20;
   titleTex.addControl(titleText);
 
-  // ───── BUTTONS (Margin Diperlebar) ─────────
+  // ───── BUTTONS (Original Layout) ─────────
 
-  // 1. START (Paling Atas)
+  // 1. START
   const btnStart = createSuperButton(
     "btnStart",
     "Start Simulation",
     panel,
     onStart
   );
-  btnStart.position = new BABYLON.Vector3(0, 1.2, 0); // Y: 1.2
+  btnStart.position = new BABYLON.Vector3(0, 1.2, 0);
 
   // 2. HOW TO PLAY
   const handleHowTo = onHowTo
@@ -380,7 +381,7 @@ export function createSuperMenu({
     panel,
     handleHowTo
   );
-  btnHowTo.position = new BABYLON.Vector3(0, 0.45, 0); // Y: 0.45 (Margin lebar)
+  btnHowTo.position = new BABYLON.Vector3(0, 0.45, 0);
 
   // 3. ABOUT
   const btnAbout = createSuperButton("btnAbout", "About", panel, () => {
@@ -391,9 +392,9 @@ export function createSuperMenu({
         "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah.\n\nMelalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik.",
     });
   });
-  btnAbout.position = new BABYLON.Vector3(0, -0.3, 0); // Y: -0.30
+  btnAbout.position = new BABYLON.Vector3(0, -0.3, 0);
 
-  // 4. CREDITS (Paling Bawah)
+  // 4. CREDITS
   const btnCredits = createSuperButton("btnCredits", "Credits", panel, () => {
     createModal({
       scene,
@@ -413,25 +414,19 @@ export function createSuperMenu({
         "Didukung oleh: PENS - Teknologi Rekayasa Multimedia",
     });
   });
-  btnCredits.position = new BABYLON.Vector3(0, -1.05, 0); // Y: -1.05
+  btnCredits.position = new BABYLON.Vector3(0, -1.05, 0);
 
-  // --- 2. Inisialisasi XR & Integrasi Manager 3D ---
+  // --- 2. Inisialisasi XR ---
   try {
     scene
       .createDefaultXRExperienceAsync({
         disableTeleportation: true,
       })
       .then((xrExperience) => {
-        if (xrExperience.pointerSelection) {
-          manager.utilityLayer.utilityLayerScene.activeCamera =
-            xrExperience.pointerSelection.attachToMesh.camera;
-        }
-        xrExperience.input.onControllerAddedObservable.add((controller) => {
-          // Auto-handle by GUI3DManager
-        });
+        console.log("XR Initialized for Super Menu");
       });
   } catch (e) {
-    // Fallback jika WebXR tidak tersedia
+    console.warn("XR Not Supported");
   }
 
   return panel;
