@@ -299,7 +299,7 @@ export function createSuperMenu({
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
   mat.diffuseColor = new BABYLON.Color3(0.1, 0.12, 0.18);
-  mat.alpha = 0.7;
+  mat.alpha = 0.3;
   mat.emissiveColor = new BABYLON.Color3(0.05, 0.08, 0.1);
   mat.specularColor = new BABYLON.Color3(0.3, 0.5, 0.8);
   mat.backFaceCulling = false;
@@ -320,11 +320,11 @@ export function createSuperMenu({
     "superTitle",
     {
       width: 4,
-      height: 1.0,
+      height: 1,
     },
     scene
   );
-  titlePlane.position = new BABYLON.Vector3(0, 2.8, 5.8);
+  titlePlane.position = new BABYLON.Vector3(0, 2.7, 4.8);
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
     titlePlane,
