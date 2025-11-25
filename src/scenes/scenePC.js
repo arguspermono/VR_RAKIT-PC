@@ -78,7 +78,7 @@ export async function createScenePC(engine, canvas, onExitApp) {
     Object.values(scene.__app.loaded).forEach((item) => {
       if (item.root) {
         initialStates.push({
-          key: item.key, // Simpan ID untuk cek mass nanti
+          key: item.key,
           mesh: item.root,
           position: item.root.position.clone(),
           rotation: item.root.rotationQuaternion
@@ -92,7 +92,6 @@ export async function createScenePC(engine, canvas, onExitApp) {
   function handleResetObjects() {
     console.log("🔄 Resetting PC objects (Full Reset)...");
 
-    // 1. Reset Slot Status
     const slots = scene.__app.slots;
     if (slots) {
       for (const key in slots) {
@@ -102,15 +101,13 @@ export async function createScenePC(engine, canvas, onExitApp) {
       }
     }
 
-    // 2. Reset Components
     initialStates.forEach((state) => {
       const mesh = state.mesh;
       if (!mesh) return;
 
       mesh.setParent(null);
-      mesh.isPickable = true; // Aktifkan interaksi lagi
+      mesh.isPickable = true;
 
-      // Re-create Physics jika sudah didispose (karena snap)
       if (!mesh.physicsImpostor || mesh.physicsImpostor.isDisposed) {
         const massValue = state.key === "case" ? 0 : 1;
         mesh.physicsImpostor = new BABYLON.PhysicsImpostor(
@@ -133,14 +130,13 @@ export async function createScenePC(engine, canvas, onExitApp) {
       mesh.computeWorldMatrix(true);
     });
 
-    // 3. Reset Tutorial Logic (Agar kembali ke step awal)
     if (scene.__tutorial && typeof scene.__tutorial.reset === "function") {
       scene.__tutorial.reset();
       console.log("✅ Tutorial Logic Reset to Step 0");
     }
   }
 
-  saveInitialStates(); // Simpan posisi awal
+  saveInitialStates();
 
   // --- HUD ---
   createHUD(
@@ -151,6 +147,28 @@ export async function createScenePC(engine, canvas, onExitApp) {
     },
     handleResetObjects
   );
+
+  // =========================================================
+  // 🔥 FIX VR: Inisialisasi Ulang WebXR
+  // =========================================================
+  try {
+    // Ambil mesh lantai dari sceneBase agar teleportasi jalan
+    const floorMesh = scene.getMeshByName("collider_lantai");
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+      floorMeshes: floorMesh ? [floorMesh] : [],
+      disableTeleportation: false,
+      uiOptions: {
+        sessionMode: "immersive-vr",
+      },
+    });
+
+    // Simpan referensi XR agar interactions.js bisa pakai controllernya
+    scene.__app.xr = xr;
+    console.log("✅ VR Initialized for PC Scene");
+  } catch (e) {
+    console.warn("❌ VR Not Supported in PC Scene:", e);
+  }
 
   return scene;
 }

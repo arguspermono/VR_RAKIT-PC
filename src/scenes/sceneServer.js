@@ -85,7 +85,7 @@ export async function createSceneServer(engine, canvas, onExitApp) {
     Object.values(scene.__app.loaded).forEach((item) => {
       if (item.root) {
         initialStates.push({
-          key: item.key, // Simpan ID
+          key: item.key,
           mesh: item.root,
           position: item.root.position.clone(),
           rotation: item.root.rotationQuaternion
@@ -99,7 +99,6 @@ export async function createSceneServer(engine, canvas, onExitApp) {
   function handleResetObjects() {
     console.log("🔄 Resetting Server objects (Full Reset)...");
 
-    // 1. Reset Slot Status
     const slots = scene.__app.slots;
     if (slots) {
       for (const key in slots) {
@@ -109,7 +108,6 @@ export async function createSceneServer(engine, canvas, onExitApp) {
       }
     }
 
-    // 2. Reset Components
     initialStates.forEach((state) => {
       const mesh = state.mesh;
       if (!mesh) return;
@@ -117,9 +115,7 @@ export async function createSceneServer(engine, canvas, onExitApp) {
       mesh.setParent(null);
       mesh.isPickable = true;
 
-      // Re-create Physics
       if (!mesh.physicsImpostor || mesh.physicsImpostor.isDisposed) {
-        // Server Rack statis (mass 0), lainnya dinamis (mass 1)
         const massValue = state.key === "server_rack" ? 0 : 1;
         mesh.physicsImpostor = new BABYLON.PhysicsImpostor(
           mesh,
@@ -141,7 +137,6 @@ export async function createSceneServer(engine, canvas, onExitApp) {
       mesh.computeWorldMatrix(true);
     });
 
-    // 3. Reset Tutorial Logic
     if (scene.__tutorial && typeof scene.__tutorial.reset === "function") {
       scene.__tutorial.reset();
       console.log("✅ Tutorial Logic Reset to Step 0");
@@ -159,6 +154,26 @@ export async function createSceneServer(engine, canvas, onExitApp) {
     },
     handleResetObjects
   );
+
+  // =========================================================
+  // 🔥 FIX VR: Inisialisasi Ulang WebXR
+  // =========================================================
+  try {
+    const floorMesh = scene.getMeshByName("collider_lantai");
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+      floorMeshes: floorMesh ? [floorMesh] : [],
+      disableTeleportation: false,
+      uiOptions: {
+        sessionMode: "immersive-vr",
+      },
+    });
+
+    scene.__app.xr = xr;
+    console.log("✅ VR Initialized for Server Scene");
+  } catch (e) {
+    console.warn("❌ VR Not Supported in Server Scene:", e);
+  }
 
   return scene;
 }
