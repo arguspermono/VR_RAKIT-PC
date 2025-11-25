@@ -123,6 +123,62 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
   return btn;
 }
 
+function createBackButton(name, mainText, panel, onBack) {
+  const btn = new BABYLON.GUI.HolographicButton(name);
+  panel.addControl(btn);
+
+  // Mesh pipih
+  btn.scaling = new BABYLON.Vector3(0.6, 0.4, 0.4);
+
+  // Rectangle fixed aspect
+  const rect = new BABYLON.GUI.Rectangle();
+  rect.width = 0.9;        
+  rect.height = 0.30;
+  rect.thickness = 0;
+  rect.background = "transparent";
+  btn.content = rect;
+
+  // Dark glass
+  if (btn.backMaterial) {
+    btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1);
+    btn.backMaterial.alpha = 0.8;
+  }
+
+  // Stack panel
+  const stack = new BABYLON.GUI.StackPanel();
+  stack.isVertical = true;
+  stack.width = "100%";
+  stack.paddingTop = "20px";
+  stack.paddingBottom = "20px";
+  stack.paddingLeft = "40px";
+  stack.paddingRight = "40px";
+  rect.addControl(stack);
+
+  // Title
+  const title = new BABYLON.GUI.TextBlock();
+  title.text = mainText.toUpperCase();
+  title.color = "#00FFFF";
+  title.fontSize = 40;
+  title.fontStyle = "bold";
+  title.height = "30px";
+  title.shadowColor = "#008888";
+  title.shadowBlur = 5;
+  stack.addControl(title);
+
+  // Hover effect
+  btn.onPointerEnterObservable.add(() => title.color = "#FFFFFF");
+  btn.onPointerOutObservable.add(() => title.color = "#00FFFF");
+
+  // Click behaviour sama dengan Exit App
+  btn.onPointerDownObservable.add(() => {
+    if (onBack) onBack();
+    else window.location.reload();
+  });
+
+  return btn;
+}
+
+
 
 // ============================================================
 // MAIN MENU (LAYOUT MANUAL AGAR SIMETRIS)
@@ -219,12 +275,22 @@ export function createMainMenu({
     onStartServer
   );
 
+  const btnBack = createBackButton(
+    "btnBack",
+    "BACK",
+    panel,
+    () => {
+      window.location.reload();
+    }
+  );
+
   // 2. ATUR KOORDINAT X (Agar jaraknya pasti sama)
   // Karena lebar tombol sekitar 1.6, kita beri jarak antar pusat tombol sejauh 1.9 atau 2.0
 
   btnPC.position = new BABYLON.Vector3(-1.5, 0, 0); // Geser Kiri
   btnLaptop.position = new BABYLON.Vector3(0, 0, 0); // Tetap di Tengah
   btnServer.position = new BABYLON.Vector3(1.5, 0, 0); // Geser Kanan
+  btnBack.position = new BABYLON.Vector3(0, -0.8, 0)
 
   // ENABLE VR
   try {
