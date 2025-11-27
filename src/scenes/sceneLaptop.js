@@ -171,5 +171,7 @@ export async function createSceneLaptop(engine, canvas, onExitApp) {
   //   console.warn("❌ VR Not Supported in Laptop Scene:", e);
   // }
 
+  // scene.__app.xr = scene.getEngine().__xr || null;
+
   return scene;
 }

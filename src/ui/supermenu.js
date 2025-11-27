@@ -9,6 +9,7 @@ let _bgm = null;
 let _bgmStarted = false;
 let activeModal = null;
 let closeBtn3D = null;
+let userInteracted = false;
 
 function initSuperAudio() {
   if (_audioInitialized) return;
@@ -26,8 +27,17 @@ function initSuperAudio() {
   } catch (e) {}
 }
 
+// mark user interaction so autoplay won't be blocked
+window.addEventListener("pointerdown", () => {
+  userInteracted = true;
+  if (_bgm && !_bgmStarted) {
+    try { _bgm.play(); _bgmStarted = true; } catch (e) {}
+  }
+}, { once: false });
+
+// safe play helpers
 function playClick() {
-  if (!_clickSfx) return;
+  if (!_clickSfx || !userInteracted) return;
   try {
     _clickSfx.currentTime = 0;
     _clickSfx.play();
@@ -35,7 +45,7 @@ function playClick() {
 }
 
 function startBGM() {
-  if (!_bgm || _bgmStarted) return;
+  if (!_bgm || _bgmStarted || !userInteracted) return;
   try {
     _bgm.play();
     _bgmStarted = true;
@@ -247,9 +257,11 @@ function createSuperButton(name, label, panel, onClick) {
 
 // =====================================================================
 // 🚀 SUPER MENU (FIXED INTERACTION)
+// Returns: TransformNode root
 // =====================================================================
 export function createSuperMenu({
   scene,
+  xrHelper = null, // injected global xr helper (may be null)
   onStart,
   onAbout,
   onCredits,
@@ -258,11 +270,13 @@ export function createSuperMenu({
   initSuperAudio();
   initCloseBtn(scene);
 
-  // [FIX 1] Gunakan mode scene utama agar interaksi VR lebih akurat
+  // create root transform node so caller can enable/disable whole menu
+  const root = new BABYLON.TransformNode("superMenuRoot", scene);
+
   const manager = new BABYLON.GUI.GUI3DManager(scene);
   manager.useUtilityLayer = false;
 
-  // ───── LOAD ENVIRONMENT ─────────
+  // ───── LOAD ENVIRONMENT (attach to root) ─────────
   BABYLON.SceneLoader.ImportMesh(
     "",
     "./assets/",
@@ -270,9 +284,10 @@ export function createSuperMenu({
     scene,
     (meshes) => {
       meshes.forEach((m) => {
+        // m.parent = root;
         m.scaling = new BABYLON.Vector3(1, 1, 1);
         m.position = new BABYLON.Vector3(0, 0, 0);
-        m.isPickable = false; // Environment tidak boleh mengganggu raycast
+        m.isPickable = false;
       });
       startBGM();
     }
@@ -294,7 +309,7 @@ export function createSuperMenu({
     },
     scene
   );
-  // Posisi Kaca di Z = 5.95
+  glass.parent = root;
   glass.position = new BABYLON.Vector3(0, 1.4, 5.95);
 
   const mat = new BABYLON.StandardMaterial("glassMat", scene);
@@ -304,16 +319,13 @@ export function createSuperMenu({
   mat.specularColor = new BABYLON.Color3(0.3, 0.5, 0.8);
   mat.backFaceCulling = false;
   glass.material = mat;
-
-  // [FIX 2] Matikan isPickable pada kaca agar laser bisa tembus ke tombol
   glass.isPickable = false;
 
   // ───── PANEL BUTTON 3D (TENGAH) ─────────
   const panel = new BABYLON.GUI.Container3D();
   manager.addControl(panel);
-
-  // [FIX 3] Majukan posisi panel tombol ke Z = 5.8
   panel.position = new BABYLON.Vector3(0, 1.1, 5.8);
+  panel.linkToTransformNode(root); // ensure panel moves with root
 
   // ───── JUDUL (Dinaikkan) ─────────
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
@@ -324,6 +336,7 @@ export function createSuperMenu({
     },
     scene
   );
+  titlePlane.parent = root;
   titlePlane.position = new BABYLON.Vector3(0, 2.7, 4.8);
 
   const titleTex = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
@@ -345,16 +358,25 @@ export function createSuperMenu({
 
   // ───── BUTTONS (Original Layout) ─────────
 
-  // 1. START
-  const btnStart = createSuperButton(
-    "btnStart",
-    "Start Simulation",
-    panel,
-    onStart
-  );
+  // 1. START (Enter main menu; optionally enter XR first)
+  const startHandler = async () => {
+    // If xrHelper exists, we will try to enter XR before switching.
+    // We call onStart with an object indicating we tried to enter XR.
+    if (xrHelper && xrHelper.baseExperience) {
+      try {
+        // Must be called from user gesture (this function is triggered by pointerdown)
+        await xrHelper.baseExperience.enterXRAsync("immersive-vr", "local-floor");
+      } catch (err) {
+        console.warn("Unable to enter XR from supermenu:", err);
+      }
+    }
+    if (onStart) onStart({ enterXR: !!(xrHelper && xrHelper.baseExperience) });
+  };
+
+  const btnStart = createSuperButton("btnStart", "Start Simulation", panel, startHandler);
   btnStart.position = new BABYLON.Vector3(0, 1.2, 0);
 
-  // 2. HOW TO PLAY
+  // 2. HOW TO (modal)
   const handleHowTo = onHowTo
     ? onHowTo
     : () => {
@@ -375,12 +397,7 @@ export function createSuperMenu({
             "Selamat mencoba!",
         });
       };
-  const btnHowTo = createSuperButton(
-    "btnHowTo",
-    "How To Play",
-    panel,
-    handleHowTo
-  );
+  const btnHowTo = createSuperButton("btnHowTo", "How To Play", panel, handleHowTo);
   btnHowTo.position = new BABYLON.Vector3(0, 0.45, 0);
 
   // 3. ABOUT
@@ -389,7 +406,7 @@ export function createSuperMenu({
       scene,
       title: "About",
       content:
-        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi langkah.\n\nMelalui lingkungan virtual yang aman, pengguna dapat mempelajari urutan dan teknik perakitan tanpa risiko merusak komponen fisik.",
+        "Craftlab adalah Game VR imersif dan interaktif untuk media edukasi praktikum perakitan hardware. Aplikasi ini mensimulasikan proses perakitan PC Desktop, Laptop, dan Webserver secara realistis dengan tutorial langkah demi demi.",
     });
   });
   btnAbout.position = new BABYLON.Vector3(0, -0.3, 0);
@@ -416,18 +433,7 @@ export function createSuperMenu({
   });
   btnCredits.position = new BABYLON.Vector3(0, -1.05, 0);
 
-  // --- 2. Inisialisasi XR ---
-  try {
-    scene
-      .createDefaultXRExperienceAsync({
-        disableTeleportation: true,
-      })
-      .then((xrExperience) => {
-        console.log("XR Initialized for Super Menu");
-      });
-  } catch (e) {
-    console.warn("XR Not Supported");
-  }
-
-  return panel;
+  // Attach panel and other UI under root (done via parent / linkToTransformNode)
+  // Return root so app can setEnabled(true/false)
+  return root;
 }

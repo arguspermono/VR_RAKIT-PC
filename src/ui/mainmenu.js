@@ -7,6 +7,7 @@ let _audioInitialized = false;
 let _clickSfx = null;
 let _bgm = null;
 let _bgmStarted = false;
+let userInteracted = false;
 
 function initMenuAudio() {
   if (_audioInitialized) return;
@@ -28,8 +29,15 @@ function initMenuAudio() {
   }
 }
 
+window.addEventListener("pointerdown", () => {
+  userInteracted = true;
+  if (_bgm && !_bgmStarted) {
+    try { _bgm.play(); _bgmStarted = true; } catch (e) {}
+  }
+}, { once: false });
+
 function playMenuClick() {
-  if (!_clickSfx) return;
+  if (!_clickSfx || !userInteracted) return;
   try {
     _clickSfx.currentTime = 0;
     _clickSfx.play();
@@ -39,7 +47,7 @@ function playMenuClick() {
 }
 
 function startMenuBGM() {
-  if (!_bgm || _bgmStarted) return;
+  if (!_bgm || _bgmStarted || !userInteracted) return;
   try {
     _bgm.play();
     _bgmStarted = true;
@@ -58,7 +66,6 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
   btn.scaling = new BABYLON.Vector3(1.2, 0.8, 1);
   btn.cornerRadius = 5;
 
-  // Material Belakang (Dark Glass Look) 
   if (btn.backMaterial) { 
     btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1); 
     btn.backMaterial.alpha = 0.8; 
@@ -73,7 +80,6 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
   stack.paddingRight = "40px";
   btn.content = stack;
 
-  // MAIN TITLE
   const title = new BABYLON.GUI.TextBlock();
   title.text = mainText.toUpperCase();
   title.color = "#00FFFF";
@@ -84,17 +90,15 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
   title.shadowBlur = 5;
   stack.addControl(title);
 
-  // 🔥 NEW: MAIN DEVICE (PC / LAPTOP / SERVER)
   const deviceText = new BABYLON.GUI.TextBlock();
   deviceText.text = mainDevice.toUpperCase();
-  deviceText.color = "#00FFFF";  // sama neon cyan
+  deviceText.color = "#00FFFF";
   deviceText.fontSize = 18;
   deviceText.height = "24px";
   deviceText.shadowColor = "#008888";
   deviceText.shadowBlur = 6;
   stack.addControl(deviceText);
 
-  // SUBTEXT
   const subtitle = new BABYLON.GUI.TextBlock();
   subtitle.text = `>> ${subText} <<`;
   subtitle.color = "#AAAAAA";
@@ -102,16 +106,15 @@ function createCyberButton(name, mainText, mainDevice, subText, panel, onClick) 
   subtitle.height = "20px";
   stack.addControl(subtitle);
 
-  // Event dan hover...
   btn.onPointerEnterObservable.add(() => {
     title.color = "#FFFFFF";
-    deviceText.color = "#FFFFFF";    // ikut hover
+    deviceText.color = "#FFFFFF";
     subtitle.color = "#00FFFF";
   });
 
   btn.onPointerOutObservable.add(() => {
     title.color = "#00FFFF";
-    deviceText.color = "#00FFFF";    // kembali ke cyan
+    deviceText.color = "#00FFFF";
     subtitle.color = "#AAAAAA";
   });
   
@@ -127,10 +130,8 @@ function createBackButton(name, mainText, panel, onBack) {
   const btn = new BABYLON.GUI.HolographicButton(name);
   panel.addControl(btn);
 
-  // Mesh pipih
   btn.scaling = new BABYLON.Vector3(0.6, 0.4, 0.4);
 
-  // Rectangle fixed aspect
   const rect = new BABYLON.GUI.Rectangle();
   rect.width = 0.9;        
   rect.height = 0.30;
@@ -138,13 +139,11 @@ function createBackButton(name, mainText, panel, onBack) {
   rect.background = "transparent";
   btn.content = rect;
 
-  // Dark glass
   if (btn.backMaterial) {
     btn.backMaterial.albedoColor = new BABYLON.Color3(0.05, 0.05, 0.1);
     btn.backMaterial.alpha = 0.8;
   }
 
-  // Stack panel
   const stack = new BABYLON.GUI.StackPanel();
   stack.isVertical = true;
   stack.width = "100%";
@@ -154,7 +153,6 @@ function createBackButton(name, mainText, panel, onBack) {
   stack.paddingRight = "40px";
   rect.addControl(stack);
 
-  // Title
   const title = new BABYLON.GUI.TextBlock();
   title.text = mainText.toUpperCase();
   title.color = "#00FFFF";
@@ -165,11 +163,9 @@ function createBackButton(name, mainText, panel, onBack) {
   title.shadowBlur = 5;
   stack.addControl(title);
 
-  // Hover effect
   btn.onPointerEnterObservable.add(() => title.color = "#FFFFFF");
   btn.onPointerOutObservable.add(() => title.color = "#00FFFF");
 
-  // Click behaviour sama dengan Exit App
   btn.onPointerDownObservable.add(() => {
     if (onBack) onBack();
     else window.location.reload();
@@ -178,22 +174,23 @@ function createBackButton(name, mainText, panel, onBack) {
   return btn;
 }
 
-
-
 // ============================================================
-// MAIN MENU (LAYOUT MANUAL AGAR SIMETRIS)
+// MAIN MENU (return TransformNode root)
 // ============================================================
 export function createMainMenu({
   scene,
+  xrHelper = null,
   onStartPC,
   onStartLaptop,
   onStartServer,
 }) {
   initMenuAudio();
 
+  const root = new BABYLON.TransformNode("mainMenuRoot", scene);
+
   const manager = new BABYLON.GUI.GUI3DManager(scene);
 
-  // LOAD ROOM
+  // LOAD ROOM (attach meshes to root)
   BABYLON.SceneLoader.ImportMesh(
     "",
     "./assets/",
@@ -201,15 +198,18 @@ export function createMainMenu({
     scene,
     (meshes) => {
       meshes.forEach((m) => {
+        // m.parent = root;
         m.scaling = new BABYLON.Vector3(1, 1, 1);
         m.position = new BABYLON.Vector3(0, 0, 0);
       });
 
       const cam = scene.activeCamera;
-      cam.position = new BABYLON.Vector3(0, 1.6, 1);
-      cam.setTarget(new BABYLON.Vector3(0, 1.3, 2));
-      cam.applyGravity = false;
-      cam.checkCollisions = false;
+      if (cam) {
+        cam.position = new BABYLON.Vector3(0, 1.6, 1);
+        cam.setTarget(new BABYLON.Vector3(0, 1.3, 2));
+        cam.applyGravity = false;
+        cam.checkCollisions = false;
+      }
     }
   );
 
@@ -217,6 +217,7 @@ export function createMainMenu({
   const panel = new BABYLON.GUI.Container3D();
   manager.addControl(panel);
   panel.position = new BABYLON.Vector3(0, 1, 4);
+  panel.linkToTransformNode(root);
 
   // TITLE TEXT
   const titlePlane = BABYLON.MeshBuilder.CreatePlane(
@@ -224,6 +225,7 @@ export function createMainMenu({
     { width: 4.5, height: 1.0 },
     scene
   );
+  titlePlane.parent = root;
   titlePlane.position = new BABYLON.Vector3(0, 2.3, 4);
 
   const titleTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
@@ -243,11 +245,7 @@ export function createMainMenu({
   titleText.shadowBlur = 20;
   titleTexture.addControl(titleText);
 
-  // ============================================================
-  // TOMBOL DENGAN POSISI MANUAL (SIMETRIS)
-  // ============================================================
-
-  // Kita simpan tombol dalam variabel agar bisa diatur posisinya
+  // Buttons
   const btnPC = createCyberButton(
     "btnPC",
     "Mulai Rakit",
@@ -280,30 +278,16 @@ export function createMainMenu({
     "BACK",
     panel,
     () => {
+      // back to super menu — simplest is reload for now
       window.location.reload();
     }
   );
 
-  // 2. ATUR KOORDINAT X (Agar jaraknya pasti sama)
-  // Karena lebar tombol sekitar 1.6, kita beri jarak antar pusat tombol sejauh 1.9 atau 2.0
+  btnPC.position = new BABYLON.Vector3(-1.5, 0, 0);
+  btnLaptop.position = new BABYLON.Vector3(0, 0, 0);
+  btnServer.position = new BABYLON.Vector3(1.5, 0, 0);
+  btnBack.position = new BABYLON.Vector3(0, -0.8, 0);
 
-  btnPC.position = new BABYLON.Vector3(-1.5, 0, 0); // Geser Kiri
-  btnLaptop.position = new BABYLON.Vector3(0, 0, 0); // Tetap di Tengah
-  btnServer.position = new BABYLON.Vector3(1.5, 0, 0); // Geser Kanan
-  btnBack.position = new BABYLON.Vector3(0, -0.8, 0)
-
-  // ENABLE VR
-  try {
-    scene.createDefaultXRExperienceAsync({
-      floorMeshes: [],
-      disableTeleportation: true,
-      uiOptions: {
-        sessionMode: "immersive-vr",
-      },
-    });
-  } catch (e) {
-    console.warn("WebXR not supported here", e);
-  }
-
-  return panel;
+  // DO NOT create XR experience here (app.js handles XR)
+  return root;
 }

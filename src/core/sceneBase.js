@@ -163,5 +163,26 @@ export async function createSceneBase(engine, canvas) {
     console.error("Gagal memuat environment:", e);
   }
 
+  // -----------------------------------------------------------------
+  // [7] XR INSTANCE GLOBAL (dibuat SEKALI SAJA)
+  // -----------------------------------------------------------------
+  if (!engine.__xr) {
+      console.log("🌐 Creating XR for the FIRST time...");
+      engine.__xr = await scene.createDefaultXRExperienceAsync({
+          floorMeshes: [],        // nanti otomatis
+          disableTeleportation: true
+      });
+  } else {
+      console.log("🔄 Reusing XR instance...");
+      // Rebind session ke scene baru
+      engine.__xr.baseExperience.enterXRAsync(
+          "immersive-vr",
+          "local-floor",
+          scene
+      );
+  }
+
+  scene.__app.xr = engine.__xr;
+
   return scene;
 }

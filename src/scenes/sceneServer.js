@@ -175,5 +175,7 @@ export async function createSceneServer(engine, canvas, onExitApp) {
   //   console.warn("❌ VR Not Supported in Server Scene:", e);
   // }
 
+  // scene.__app.xr = scene.getEngine().__xr || null;
+
   return scene;
 }
