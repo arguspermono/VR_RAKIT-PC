@@ -158,22 +158,22 @@ export async function createSceneServer(engine, canvas, onExitApp) {
   // =========================================================
   // 🔥 FIX VR: Inisialisasi Ulang WebXR
   // =========================================================
-  try {
-    const floorMesh = scene.getMeshByName("collider_lantai");
+  // try {
+  //   const floorMesh = scene.getMeshByName("collider_lantai");
 
-    const xr = await scene.createDefaultXRExperienceAsync({
-      floorMeshes: floorMesh ? [floorMesh] : [],
-      disableTeleportation: false,
-      uiOptions: {
-        sessionMode: "immersive-vr",
-      },
-    });
+  //   const xr = await scene.createDefaultXRExperienceAsync({
+  //     floorMeshes: floorMesh ? [floorMesh] : [],
+  //     disableTeleportation: false,
+  //     uiOptions: {
+  //       sessionMode: "immersive-vr",
+  //     },
+  //   });
 
-    scene.__app.xr = xr;
-    console.log("✅ VR Initialized for Server Scene");
-  } catch (e) {
-    console.warn("❌ VR Not Supported in Server Scene:", e);
-  }
+  //   scene.__app.xr = xr;
+  //   console.log("✅ VR Initialized for Server Scene");
+  // } catch (e) {
+  //   console.warn("❌ VR Not Supported in Server Scene:", e);
+  // }
 
   return scene;
 }

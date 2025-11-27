@@ -151,24 +151,24 @@ export async function createScenePC(engine, canvas, onExitApp) {
   // =========================================================
   // 🔥 FIX VR: Inisialisasi Ulang WebXR
   // =========================================================
-  try {
-    // Ambil mesh lantai dari sceneBase agar teleportasi jalan
-    const floorMesh = scene.getMeshByName("collider_lantai");
+  // try {
+  //   // Ambil mesh lantai dari sceneBase agar teleportasi jalan
+  //   const floorMesh = scene.getMeshByName("collider_lantai");
 
-    const xr = await scene.createDefaultXRExperienceAsync({
-      floorMeshes: floorMesh ? [floorMesh] : [],
-      disableTeleportation: false,
-      uiOptions: {
-        sessionMode: "immersive-vr",
-      },
-    });
+  //   const xr = await scene.createDefaultXRExperienceAsync({
+  //     floorMeshes: floorMesh ? [floorMesh] : [],
+  //     disableTeleportation: false,
+  //     uiOptions: {
+  //       sessionMode: "immersive-vr",
+  //     },
+  //   });
 
-    // Simpan referensi XR agar interactions.js bisa pakai controllernya
-    scene.__app.xr = xr;
-    console.log("✅ VR Initialized for PC Scene");
-  } catch (e) {
-    console.warn("❌ VR Not Supported in PC Scene:", e);
-  }
+  //   // Simpan referensi XR agar interactions.js bisa pakai controllernya
+  //   scene.__app.xr = xr;
+  //   console.log("✅ VR Initialized for PC Scene");
+  // } catch (e) {
+  //   console.warn("❌ VR Not Supported in PC Scene:", e);
+  // }
 
   return scene;
 }
